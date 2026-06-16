@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>Hospital Dashboard</title>
+<style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+           display: flex; height: 100vh; background-color: #f3f4f6; }
+
+    /* ── 사이드바 ── */
+    .sidebar { width: 220px; background-color: #0f3f8a; color: white;
+               display: flex; flex-direction: column; padding-top: 20px; flex-shrink: 0; }
+    .sidebar h2 { text-align: center; margin-bottom: 30px; font-size: 1.5rem; }
+    .sidebar a  { padding: 15px 25px; color: rgba(255,255,255,0.8); text-decoration: none;
+                  display: block; transition: 0.3s; }
+    .sidebar a:hover  { background-color: #1759bb; color: white; }
+    .sidebar a.active { background-color: #1759bb; font-weight: bold; color: white; }
+
+    /* ── 메인 ── */
+    .main { flex: 1; padding: 30px; overflow-y: auto; }
+    .topbar { display: flex; justify-content: space-between; align-items: center;
+              margin-bottom: 24px; padding-bottom: 15px; border-bottom: 2px solid #e0e4e9; }
+    .topbar h3 { margin: 0; font-size: 1.3rem; }
+    .logout { background: #1759bb; color: white; padding: 8px 18px; border-radius: 6px;
+              text-decoration: none; font-size: 14px; font-weight: bold; }
+
+    /* ── 연결 배너 ── */
+    #conn-banner { display: none; background: #ffebee; color: #c62828;
+                   border: 1px solid #ffcdd2; border-radius: 6px;
+                   padding: 10px 16px; margin-bottom: 16px;
+                   font-size: 0.85rem; font-weight: bold; }
+
+    /* ── 상단 요약 카드 행 ── */
+    .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+                    gap: 18px; margin-bottom: 24px; }
+    .card { background: white; padding: 22px 24px; border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+            display: flex; flex-direction: column; justify-content: center; }
+    .card-label { margin: 0 0 6px 0; color: #888; font-size: 0.82rem;
+                  text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; }
+    .card-value { font-size: 2.4rem; font-weight: 800; color: #0f3f8a;
+                  line-height: 1.1; margin-bottom: 8px; }
+    .card-value span.unit { font-size: 1.1rem; font-weight: 500; color: #aaa; margin-left: 4px; }
+    .card-sub   { font-size: 0.8rem; color: #aaa; }
+
+    /* ── 상태 배지 ── */
+    .badge { display: inline-flex; align-items: center; gap: 5px;
+             font-size: 0.85rem; font-weight: 700; padding: 5px 12px;
+             border-radius: 20px; }
+    .badge-safe    { background: #e8f5e9; color: #2e7d32; }
+    .badge-warning { background: #fff3e0; color: #e65100; }
+    .badge-danger  { background: #ffebee; color: #c62828; }
+    .badge-unknown { background: #f5f5f5; color: #9e9e9e; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor;
+           opacity: 0.8; flex-shrink: 0; }
+
+    /* ── 배터리 바 ── */
+    .bat-track { width: 100%; height: 8px; background: #eee; border-radius: 4px;
+                 margin-top: 10px; overflow: hidden; }
+    .bat-fill  { height: 100%; background: #4caf50; transition: width 0.5s ease; }
+
+    /* ── 병동 + 알림 섹션 ── */
+    .bottom-grid { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 18px; }
+    @media (max-width: 900px) { .bottom-grid { grid-template-columns: 1fr; } }
+
+    .panel { background: white; border-radius: 12px;
+             box-shadow: 0 2px 10px rgba(0,0,0,0.07); padding: 22px 24px; }
+    .panel-title { margin: 0 0 16px; font-size: 1rem; font-weight: 700; color: #222;
+                   display: flex; align-items: center; gap: 8px; }
+
+    /* ── 병동 리스트 ── */
+    .ward-list { list-style: none; margin: 0; padding: 0; }
+    .ward-item { display: flex; align-items: center; justify-content: space-between;
+                 padding: 10px 4px; border-bottom: 1px solid #f0f0f0; font-size: 0.92rem; }
+    .ward-item:last-child { border-bottom: none; }
+    .ward-name { color: #334155; font-weight: 600; }
+    .ward-badge-on  { background: #e8f5e9; color: #2e7d32; border-radius: 10px;
+                      padding: 2px 10px; font-size: 0.78rem; font-weight: 700; }
+    .ward-badge-off { background: #f5f5f5; color: #9e9e9e; border-radius: 10px;
+                      padding: 2px 10px; font-size: 0.78rem; }
+    .ward-empty { color: #bbb; font-size: 0.88rem; padding: 8px 0; text-align: center; }
+
+    /* ── 환자 상태 도넛 요약 ── */
+    .patient-stats { display: flex; flex-direction: column; gap: 10px; }
+    .stat-row { display: flex; align-items: center; gap: 10px; }
+    .stat-bar-wrap { flex: 1; height: 8px; background: #f0f0f0; border-radius: 4px; overflow: hidden; }
+    .stat-bar      { height: 100%; border-radius: 4px; transition: width 0.5s; }
+    .stat-bar.normal   { background: #4caf50; }
+    .stat-bar.caution  { background: #ff9800; }
+    .stat-bar.emergency{ background: #f44336; }
+    .stat-label { font-size: 0.82rem; color: #555; min-width: 32px; }
+    .stat-count { font-size: 0.88rem; font-weight: 700; min-width: 28px; text-align: right; }
+    .stat-count.normal    { color: #2e7d32; }
+    .stat-count.caution   { color: #e65100; }
+    .stat-count.emergency { color: #c62828; }
+
+    /* ── 최근 알림 ── */
+    .alert-list { list-style: none; margin: 0; padding: 0; font-size: 0.88rem; }
+    .alert-list li { padding: 9px 4px; border-bottom: 1px solid #f0f0f0; color: #555; }
+    .alert-list li:last-child { border-bottom: none; }
+    .alert-list li.danger { color: #c62828; }
+
+    /* ── 타임스탬프 ── */
+    .last-update { font-size: 0.75rem; color: #bbb; text-align: right; margin-top: 8px; }
+</style>
+</head>
+<body>
+
+<!-- 사이드바 -->
+<nav class="sidebar">
+    <h2>🏥 Hospital</h2>
+    <a href="{{ url_for('main') }}" class="active">대시보드</a>
+    <a href="{{ url_for('patient') }}">환자</a>
+    <a href="{{ url_for('robot_status') }}">로봇 상태</a>
+    <a href="{{ url_for('camera') }}">실시간 카메라</a>
+    <a href="{{ url_for('robot_plan') }}">순찰 계획</a>
+    <a href="{{ url_for('patrol_control') }}">순찰 실행</a>
+    <a href="{{ url_for('msg_test_page') }}">Topic 테스트</a>
+</nav>
+
+<!-- 메인 -->
+<main class="main">
+    <div class="topbar">
+        <h3>📊 대시보드</h3>
+        <a href="{{ url_for('logout') }}" class="logout">Logout</a>
+    </div>
+
+    <!-- 연결 끊김 배너 -->
+    <div id="conn-banner">⚠️ 서버와 연결이 끊겼습니다. 재연결 중...</div>
+
+    <!-- ── 상단 요약 카드 4개 ── -->
+    <div class="summary-grid">
+
+        <!-- 카드 1: 병동 전체 상태 -->
+        <div class="card">
+            <p class="card-label">병동 상태</p>
+            <div class="card-value" id="ward-value">--</div>
+            <span class="badge badge-unknown" id="ward-badge">
+                <span class="dot"></span> 로딩 중
+            </span>
+        </div>
+
+        <!-- 카드 2: 현재 환자 -->
+        <div class="card">
+            <p class="card-label">현재 환자</p>
+            <div class="card-value" id="patient-total">
+                -- <span class="unit">명</span>
+            </div>
+            <span class="card-sub" id="patient-sub">로딩 중...</span>
+        </div>
+
+        <!-- 카드 3: 운영 중 병동 -->
+        <div class="card">
+            <p class="card-label">운영 중 병동</p>
+            <div class="card-value" id="room-active-val">
+                -- <span class="unit">곳</span>
+            </div>
+            <span class="card-sub" id="room-sub">전체 -- 병동</span>
+        </div>
+
+        <!-- 카드 4: 로봇 배터리 -->
+        <div class="card">
+            <p class="card-label">로봇 배터리</p>
+            <div class="card-value" id="bat-pct">-- <span class="unit">%</span></div>
+            <div class="bat-track">
+                <div id="bat-bar" class="bat-fill" style="width:0%"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── 하단 패널 3열 ── -->
+    <div class="bottom-grid">
+
+        <!-- 병동 현황 -->
+        <div class="panel">
+            <h4 class="panel-title">🏥 병동 현황</h4>
+            <ul class="ward-list" id="ward-list">
+                <li class="ward-item"><span class="ward-empty">불러오는 중...</span></li>
+            </ul>
+        </div>
+
+        <!-- 환자 상태 분포 -->
+        <div class="panel">
+            <h4 class="panel-title">🧑‍⚕️ 환자 상태</h4>
+            <div class="patient-stats" id="patient-stats">
+                <div class="stat-row">
+                    <span class="stat-label">정상</span>
+                    <div class="stat-bar-wrap"><div class="stat-bar normal" id="bar-normal" style="width:0%"></div></div>
+                    <span class="stat-count normal" id="cnt-normal">0</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">주의</span>
+                    <div class="stat-bar-wrap"><div class="stat-bar caution" id="bar-caution" style="width:0%"></div></div>
+                    <span class="stat-count caution" id="cnt-caution">0</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">응급</span>
+                    <div class="stat-bar-wrap"><div class="stat-bar emergency" id="bar-emergency" style="width:0%"></div></div>
+                    <span class="stat-count emergency" id="cnt-emergency">0</span>
+                </div>
+                <p id="patient-note" style="font-size:0.8rem;color:#aaa;margin:10px 0 0;"></p>
+            </div>
+        </div>
+
+        <!-- 최근 알림 -->
+        <div class="panel">
+            <h4 class="panel-title">🛎️ 최근 알림</h4>
+            <ul class="alert-list" id="alert-list">
+                <li>로딩 중...</li>
+            </ul>
+        </div>
+
+    </div>
+    <div class="last-update" id="last-update"></div>
+</main>
+
+<script>
+    const banner = document.getElementById('conn-banner');
+    let _timer   = null;
+    const _alerts = []; // 로컬 알림 기록 (최대 5개)
+
+    /* ── 알림 추가 ── */
+    function pushAlert(icon, msg, isDanger = false) {
+        const now = new Date().toLocaleTimeString('ko-KR', {hour:'2-digit', minute:'2-digit'});
+        _alerts.unshift({ icon, msg: `[${now}] ${msg}`, danger: isDanger });
+        if (_alerts.length > 5) _alerts.pop();
+        renderAlerts();
+    }
+
+    function renderAlerts() {
+        const ul = document.getElementById('alert-list');
+        if (_alerts.length === 0) {
+            ul.innerHTML = '<li>알림 없음</li>';
+            return;
+        }
+        ul.innerHTML = _alerts.map(a =>
+            `<li${a.danger ? ' class="danger"' : ''}>${a.icon} ${a.msg}</li>`
+        ).join('');
+    }
+
+    /* ── 병동 현황 렌더 ── */
+    function renderWards(list) {
+        const ul = document.getElementById('ward-list');
+        if (!list || list.length === 0) {
+            ul.innerHTML = '<li class="ward-item"><span class="ward-empty">등록된 병동 없음</span></li>';
+            return;
+        }
+        ul.innerHTML = list.map(r => `
+            <li class="ward-item">
+                <span class="ward-name">${r.room_name}</span>
+                ${r.active
+                    ? '<span class="ward-badge-on">🟢 운영 중</span>'
+                    : '<span class="ward-badge-off">⚫ 중단</span>'}
+            </li>`).join('');
+    }
+
+    /* ── 대시보드 요약 폴링 ── */
+    let _prevWardStatus = null;
+    let _prevPatientTotal = null;
+
+    async function updateSummary() {
+        try {
+            const res  = await fetch('/api/dashboard/summary');
+            if (!res.ok) throw new Error(res.status);
+            const data = await res.json();
+            banner.style.display = 'none';
+
+            /* 병동 카드 */
+            const r = data.rooms;
+            document.getElementById('ward-value').textContent = `${r.active} / ${r.total}`;
+            document.getElementById('room-active-val').innerHTML =
+                `${r.active} <span class="unit">곳</span>`;
+            document.getElementById('room-sub').textContent = `전체 ${r.total} 병동`;
+            renderWards(r.list);
+
+            // 병동 배지
+            const badgeEl = document.getElementById('ward-badge');
+            const classMap = { safe: 'badge-safe', warning: 'badge-warning',
+                               danger: 'badge-danger', unknown: 'badge-unknown' };
+            badgeEl.className = `badge ${classMap[r.status] || 'badge-unknown'}`;
+            badgeEl.innerHTML = `<span class="dot"></span> ${r.label}`;
+
+            // 상태 변화 알림
+            if (_prevWardStatus !== null && _prevWardStatus !== r.status) {
+                if (r.status === 'danger')
+                    pushAlert('🚨', `병동 전체 중단 감지`, true);
+                else if (r.status === 'warning')
+                    pushAlert('⚠️', `일부 병동 운영 중단`);
+                else if (r.status === 'safe')
+                    pushAlert('✅', `모든 병동 정상 가동`);
+            }
+            _prevWardStatus = r.status;
+
+            /* 환자 카드 */
+            const p = data.patients;
+            document.getElementById('patient-total').innerHTML =
+                `${p.total} <span class="unit">명</span>`;
+            const sub = [];
+            if (p.emergency > 0) sub.push(`응급 ${p.emergency}명`);
+            if (p.caution   > 0) sub.push(`주의 ${p.caution}명`);
+            document.getElementById('patient-sub').textContent =
+                sub.length ? sub.join(' · ') : `전원 정상`;
+            document.getElementById('patient-sub').style.color =
+                p.emergency > 0 ? '#c62828' : p.caution > 0 ? '#e65100' : '#aaa';
+
+            // 환자 상태 바
+            const total = p.total || 1;
+            document.getElementById('bar-normal').style.width    = (p.normal   / total * 100) + '%';
+            document.getElementById('bar-caution').style.width   = (p.caution  / total * 100) + '%';
+            document.getElementById('bar-emergency').style.width = (p.emergency/ total * 100) + '%';
+            document.getElementById('cnt-normal').textContent    = p.normal;
+            document.getElementById('cnt-caution').textContent   = p.caution;
+            document.getElementById('cnt-emergency').textContent = p.emergency;
+            document.getElementById('patient-note').textContent  =
+                p.total === 0 ? '등록된 환자가 없습니다.' : `총 ${p.total}명 입원 중`;
+
+            // 응급 환자 알림
+            if (_prevPatientTotal !== null && p.emergency > 0 &&
+                (_prevPatientTotal !== p.total || p.emergency > 0)) {
+                // 새 응급 발생 시에만 알림 (이전 없었다면)
+            }
+            if (_prevPatientTotal !== null && p.total !== _prevPatientTotal) {
+                if (p.total > _prevPatientTotal)
+                    pushAlert('🧑‍⚕️', `환자 ${p.total - _prevPatientTotal}명 추가`);
+                else
+                    pushAlert('🏥', `환자 ${_prevPatientTotal - p.total}명 퇴원`);
+            }
+            _prevPatientTotal = p.total;
+
+        } catch (e) {
+            banner.style.display = 'block';
+        }
+    }
+
+    /* ── 배터리 폴링 ── */
+    async function updateBattery() {
+        try {
+            const res  = await fetch('/api/robot/status');
+            if (!res.ok) throw new Error(res.status);
+            const data = await res.json();
+            const pct  = data.data?.battery_pct ?? 0;
+            document.getElementById('bat-pct').innerHTML =
+                `${pct} <span class="unit">%</span>`;
+            const bar = document.getElementById('bat-bar');
+            bar.style.width      = pct + '%';
+            bar.style.background = pct > 50 ? '#4caf50' : pct > 20 ? '#ff9800' : '#f44336';
+        } catch (_) {}
+    }
+
+    /* ── 폴링 제어 ── */
+    function startPolling() {
+        updateSummary();
+        updateBattery();
+        _timer = setInterval(() => {
+            updateSummary();
+            updateBattery();
+            document.getElementById('last-update').textContent =
+                '마지막 갱신: ' + new Date().toLocaleTimeString('ko-KR');
+        }, 3000);
+    }
+    function stopPolling() { clearInterval(_timer); }
+
+    document.addEventListener('visibilitychange', () => {
+        document.hidden ? stopPolling() : startPolling();
+    });
+
+    // 초기 알림 데이터 (페이지 로드 시 1회)
+    pushAlert('✅', '서버 연결 완료');
+    startPolling();
+</script>
+
+<script src="/static/emergency_popup.js"></script>
+</body>
+</html>

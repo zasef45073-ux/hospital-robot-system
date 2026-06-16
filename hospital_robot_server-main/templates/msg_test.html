@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>ROS2 토픽 모니터링 - msg_test</title>
+    <style>
+        body { 
+            margin: 0; font-family: 'Arial', sans-serif; 
+            background-color: #f3f4f6; display: flex; height: 100vh; 
+        }
+        .sidebar {
+            width: 220px; background-color: #0f3f8a; color: white;
+            display: flex; flex-direction: column; padding-top: 20px;
+        }
+        .sidebar h2 { text-align: center; margin-bottom: 30px; }
+        .sidebar a {
+            padding: 15px; color: white; text-decoration: none;
+            display: block; transition: 0.3s;
+        }
+        .sidebar a:hover { background-color: #1759bb; }
+        
+        .main { flex: 1; padding: 40px; display: flex; flex-direction: column; align-items: center; }
+        .card {
+            background: white; padding: 30px; border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 80%; max-width: 600px;
+            text-align: center;
+        }
+        #topic-data {
+            font-size: 2em; font-weight: bold; color: #0f3f8a;
+            margin-top: 20px; padding: 20px; border: 2px dashed #0f3f8a;
+            border-radius: 8px; background-color: #eef2ff;
+        }
+        .status-badge {
+            display: inline-block; padding: 5px 12px; border-radius: 20px;
+            background-color: #10b981; color: white; font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+
+<div class="sidebar">
+    <h2>Robot Admin</h2>
+    <a href="/main">홈으로</a>
+    <a href="/msg_test_page" style="background-color: #1759bb;">Topic 테스트</a>
+    <a href="/logout">로그아웃</a>
+</div>
+
+<div class="main">
+    <div class="card">
+        <h2>/msg_test 토픽 실시간 수신</h2>
+        <p><span class="status-badge">ROS2 연결됨</span></p>
+        <div id="topic-data">데이터를 불러오는 중...</div>
+        <p style="color: #666; margin-top: 15px;">서버 스레드에서 1초마다 갱신됩니다.</p>
+    </div>
+</div>
+
+<script>
+    function updateMessage() {
+        fetch('/api/msg_test')
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    document.getElementById('topic-data').innerText = result.data;
+                }
+            })
+            .catch(error => console.error('Error fetching topic:', error));
+    }
+
+    // 1초마다 한 번씩 API 호출
+    setInterval(updateMessage, 1000);
+</script>
+
+    <script src="/static/emergency_popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- 문자 인코딩을 UTF-8로 설정 -->
+<meta charset="UTF-8">
+<!-- 브라우저 탭에 표시될 페이지 제목 -->
+<title>Robot Status</title>
+
+<style>
+/* 기본 레이아웃: 여백 없음, Arial 폰트, 가로 flex, 전체 화면 높이 */
+body {
+    margin: 0;
+    font-family: Arial;
+    display: flex;
+    height: 100vh;
+}
+
+/* 왼쪽 사이드바: 너비 220px, 파란 배경, 흰 글자, 세로 flex */
+.sidebar {
+    width: 220px;
+    background-color: #0f3f8a;
+    color: white;
+    display: flex;
+    flex-direction: column;
+    padding-top: 20px;
+}
+
+/* 사이드바 링크: 패딩, 흰 글자, 밑줄 없음, 블록 요소 */
+.sidebar a {
+    padding: 15px;
+    color: white;
+    text-decoration: none;
+    display: block;
+}
+
+/* 사이드바 링크 마우스 오버 시 배경색 변경 */
+.sidebar a:hover { background-color: #1759bb; }
+
+/* 메인 콘텐츠 영역: 남은 공간 차지, 패딩, 회색 배경, 세로 스크롤 */
+.main {
+    flex: 1;
+    padding: 20px;
+    background-color: #f3f4f6;
+    overflow-y: auto;
+}
+
+/* 상단 바: 좌우 양쪽 정렬, 세로 중앙 정렬, 아래 여백 */
+.topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+/* 로그아웃 버튼 스타일: 파란 배경, 흰 글자, 패딩, 모서리 둥글게 */
+.logout {
+    background: #1759bb;
+    color: white;
+    padding: 8px 12px;
+    border-radius: 4px;
+    text-decoration: none;
+}
+/* 로그아웃 버튼 마우스 오버 시 더 진한 파란색 */
+.logout:hover { background: #0f3f8a; }
+
+/* 카드 컴포넌트: 흰 배경, 패딩, 모서리 둥글게, 그림자 */
+.card {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+/* 연결 오류 배너: 기본 숨김, 붉은 배경/테두리/글자, 패딩, 모서리, 폰트 */
+#conn-banner {
+    display: none;
+    background: #ffebee;
+    color: #c62828;
+    border: 1px solid #ffcdd2;
+    border-radius: 6px;
+    padding: 10px 16px;
+    margin-bottom: 16px;
+    font-size: 0.85rem;
+    font-weight: bold;
+}
+/* .show 클래스가 붙으면 배너를 블록으로 표시 */
+#conn-banner.show { display: block; }
+
+/* 카메라 뷰 컨테이너: flex로 공간 차지, 높이 360px, 검정 배경, 중앙 정렬, 넘침 숨김 */
+#camera-view {
+    flex: 1;
+    height: 360px;
+    background: #111;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    position: relative;
+}
+
+/* 스트리밍 이미지: 처음엔 숨김, 컨테이너에 맞게 표시 */
+#stream-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: none;
+}
+
+/* 카메라 없음 안내 영역: 기본 숨김, 세로 flex, 중앙 정렬 */
+#no-screen {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    color: #555;
+}
+/* 아이콘: 큰 폰트, 반투명 */
+#no-screen .icon { font-size: 3rem; opacity: 0.4; }
+/* 타이틀: 중간 크기, 굵게, 회색 */
+#no-screen .title { font-size: 1rem; font-weight: bold; color: #777; }
+/* 설명 텍스트: 작은 크기, 옅은 회색, 중앙 정렬, 줄간격 */
+#no-screen .sub { font-size: 0.78rem; color: #aaa; text-align: center; line-height: 1.6; }
+
+/* 카메라 로딩 스피너 컨테이너: flex, 세로 정렬, 회색 글자 */
+#cam-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    color: #aaa;
+}
+/* 스피너 원형 애니메이션: 크기, 테두리, 파란 상단, 회전 */
+.spinner {
+    width: 36px; height: 36px;
+    border: 4px solid #333;
+    border-top-color: #1759bb;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+/* 스피너 회전 키프레임 */
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* 카메라 상태 배지 공통 스타일 */
+.cam-badge {
+    font-size: 0.72rem;
+    font-weight: bold;
+    padding: 2px 10px;
+    border-radius: 99px;
+}
+/* 확인 중 상태: 파란 계열 */
+.cam-badge.checking    { background: #e3f2fd; color: #1565c0; }
+/* 수신 가능 상태: 초록 계열 */
+.cam-badge.available   { background: #e8f5e9; color: #2e7d32; }
+/* 수신 불가 상태: 빨간 계열 */
+.cam-badge.unavailable { background: #ffebee; color: #c62828; }
+</style>
+</head>
+
+<body>
+
+<!-- 왼쪽 사이드바 네비게이션 -->
+<div class="sidebar">
+    <!-- 사이드바 상단 제목 (병원 아이콘 포함) -->
+    <h2 style="text-align:center;">🏥 Hospital</h2>
+    <!-- Jinja2 url_for로 각 페이지 링크 생성 -->
+    <a href="{{ url_for('main') }}">대시보드</a>
+    <a href="{{ url_for('patient') }}">환자</a>
+    <a href="{{ url_for('robot_status') }}">로봇 상태</a>
+    <a href="{{ url_for('camera') }}">실시간 카메라</a>
+    <a href="{{ url_for('robot_plan') }}">순찰 계획</a>
+        <a href="{{ url_for('patrol_control') }}">순찰 실행</a>
+</div>
+
+<!-- 오른쪽 메인 콘텐츠 영역 -->
+<div class="main">
+
+    <!-- 상단 바: 환영 메시지 + 로그아웃 버튼 -->
+    <div class="topbar">
+        <!-- 현재 로그인된 사용자 이름 표시 -->
+        <h3>Welcome, {{ username }} 👋</h3>
+        <!-- 로그아웃 링크 -->
+        <a href="{{ url_for('logout') }}" class="logout">Logout</a>
+    </div>
+
+    <!-- 서버 연결 끊김 시 표시되는 경고 배너 (기본 숨김) -->
+    <div id="conn-banner">⚠️ 서버와 연결이 끊겼습니다. 재연결 중...</div>
+
+    <!-- 메인 카드 컨테이너 -->
+    <div class="card">
+
+        <!-- ── ROBOT 1 섹션 ── -->
+        <div style="font-size:0.8rem; font-weight:bold; color:#1759bb; letter-spacing:1px; margin-bottom:10px; padding-bottom:6px; border-bottom:2px solid #dce8ff;">🤖 ROBOT 1</div>
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-bottom:24px;">
+
+            <div style="background:#f8f9ff; border-radius:8px; padding:16px;">
+                <div style="font-size:0.75rem; color:#aaa; margin-bottom:8px;">🔋 BATTERY</div>
+                <div id="bat-pct" style="font-size:2.2rem; font-weight:bold; color:#1759bb;">-- %</div>
+                <div id="bat-volt" style="font-size:0.8rem; color:#aaa; margin:4px 0 10px;">-- V</div>
+                <div style="background:#e0e0e0; border-radius:99px; height:10px;">
+                    <div id="bat-bar" style="height:100%; border-radius:99px; background:#1759bb; width:0%; transition:width 0.5s;"></div>
+                </div>
+            </div>
+
+            <div style="background:#f8f9ff; border-radius:8px; padding:16px;">
+                <div style="font-size:0.75rem; color:#aaa; margin-bottom:8px;">📍 ODOMETRY</div>
+                <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px;">
+                    <div style="text-align:center;">
+                        <div style="font-size:0.7rem; color:#aaa;">X</div>
+                        <div id="odom-x" style="font-size:1.1rem; font-weight:bold;">--</div>
+                    </div>
+                    <div style="text-align:center;">
+                        <div style="font-size:0.7rem; color:#aaa;">Y</div>
+                        <div id="odom-y" style="font-size:1.1rem; font-weight:bold;">--</div>
+                    </div>
+                    <div style="text-align:center;">
+                        <div style="font-size:0.7rem; color:#aaa;">YAW</div>
+                        <div id="odom-yaw" style="font-size:1.1rem; font-weight:bold;">--</div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="background:#f8f9ff; border-radius:8px; padding:16px;">
+                <div style="font-size:0.75rem; color:#aaa; margin-bottom:8px;">🗺 AMCL POSE</div>
+                <div id="amcl-badge" style="display:inline-block; font-size:0.7rem; padding:2px 8px; border-radius:99px; background:#eee; color:#aaa; margin-bottom:8px;">비활성</div>
+                <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px;">
+                    <div style="text-align:center;">
+                        <div style="font-size:0.7rem; color:#aaa;">X</div>
+                        <div id="amcl-x" style="font-size:1.1rem; font-weight:bold;">--</div>
+                    </div>
+                    <div style="text-align:center;">
+                        <div style="font-size:0.7rem; color:#aaa;">Y</div>
+                        <div id="amcl-y" style="font-size:1.1rem; font-weight:bold;">--</div>
+                    </div>
+                    <div style="text-align:center;">
+                        <div style="font-size:0.7rem; color:#aaa;">YAW</div>
+                        <div id="amcl-yaw" style="font-size:1.1rem; font-weight:bold;">--</div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ── ROBOT 6 섹션 ── -->
+        <div style="font-size:0.8rem; font-weight:bold; color:#2e7d32; letter-spacing:1px; margin-bottom:10px; padding-bottom:6px; border-bottom:2px solid #c8e6c9;">🤖 ROBOT 6</div>
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-bottom:24px;">
+
+            <div style="background:#f6fff7; border-radius:8px; padding:16px;">
+                <div style="font-size:0.75rem; color:#aaa; margin-bottom:8px;">🔋 BATTERY</div>
+                <div id="r6-bat-pct" style="font-size:2.2rem; font-weight:bold; color:#2e7d32;">-- %</div>
+                <div id="r6-bat-volt" style="font-size:0.8rem; color:#aaa; margin:4px 0 10px;">-- V</div>
+                <div style="background:#e0e0e0; border-radius:99px; height:10px;">
+                    <div id="r6-bat-bar" style="height:100%; border-radius:99px; background:#2e7d32; width:0%; transition:width 0.5s;"></div>
+                </div>
+            </div>
+
+            <div style="background:#f6fff7; border-radius:8px; padding:16px;">
+                <div style="font-size:0.75rem; color:#aaa; margin-bottom:8px;">📍 ODOMETRY</div>
+                <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px;">
+                    <div style="text-align:center;">
+                        <div style="font-size:0.7rem; color:#aaa;">X</div>
+                        <div id="r6-odom-x" style="font-size:1.1rem; font-weight:bold;">--</div>
+                    </div>
+                    <div style="text-align:center;">
+                        <div style="font-size:0.7rem; color:#aaa;">Y</div>
+                        <div id="r6-odom-y" style="font-size:1.1rem; font-weight:bold;">--</div>
+                    </div>
+                    <div style="text-align:center;">
+                        <div style="font-size:0.7rem; color:#aaa;">YAW</div>
+                        <div id="r6-odom-yaw" style="font-size:1.1rem; font-weight:bold;">--</div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="background:#f6fff7; border-radius:8px; padding:16px;">
+                <div style="font-size:0.75rem; color:#aaa; margin-bottom:8px;">🗺 AMCL POSE</div>
+                <div id="r6-amcl-badge" style="display:inline-block; font-size:0.7rem; padding:2px 8px; border-radius:99px; background:#eee; color:#aaa; margin-bottom:8px;">비활성</div>
+                <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px;">
+                    <div style="text-align:center;">
+                        <div style="font-size:0.7rem; color:#aaa;">X</div>
+                        <div id="r6-amcl-x" style="font-size:1.1rem; font-weight:bold;">--</div>
+                    </div>
+                    <div style="text-align:center;">
+                        <div style="font-size:0.7rem; color:#aaa;">Y</div>
+                        <div id="r6-amcl-y" style="font-size:1.1rem; font-weight:bold;">--</div>
+                    </div>
+                    <div style="text-align:center;">
+                        <div style="font-size:0.7rem; color:#aaa;">YAW</div>
+                        <div id="r6-amcl-yaw" style="font-size:1.1rem; font-weight:bold;">--</div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- 하단 2열 그리드: 카메라 뷰어(왼쪽) + Teleop 조작(오른쪽) -->
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+
+            <!-- 왼쪽: AMR 카메라 실시간 뷰어 -->
+            <div style="background:#f8f9ff; border-radius:8px; padding:20px; display:flex; flex-direction:column; gap:10px;">
+
+                <!-- 카메라 섹션 헤더: 레이블 + 상태 배지 -->
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <div style="font-size:0.75rem; color:#aaa;">📷 AMR 카메라</div>
+                    <!-- 카메라 수신 상태 배지 (JS로 클래스/텍스트 변경) -->
+                    <span id="cam-badge" class="cam-badge checking">⏳ 확인 중</span>
+                </div>
+
+                <!-- 카메라 영상 표시 영역 -->
+                <div id="camera-view">
+                    <!-- 토픽 확인 중 스피너 (기본 표시) -->
+                    <div id="cam-loading">
+                        <div class="spinner"></div>
+                        <div style="font-size:0.8rem;">토픽 확인 중...</div>
+                    </div>
+                    <!-- 스트리밍 이미지: 오류 시 showNoScreen() 호출 -->
+                    <img id="stream-img"
+                         src="/stream/robot1/camera"
+                         alt="카메라 스트림"
+                         onerror="showNoScreen()">
+                    <!-- 카메라 토픽 없을 때 표시되는 안내 -->
+                    <div id="no-screen">
+                        <div class="icon">📵</div>
+                        <div class="title">no screen available</div>
+                        <div class="sub">카메라 토픽을 수신할 수 없습니다.</div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- 오른쪽: Teleop 원격 조종 패널 -->
+            <div style="background:#f8f9ff; border-radius:8px; padding:20px;">
+                <!-- Teleop 안내 레이블 -->
+                <div style="font-size:0.75rem; color:#aaa; margin-bottom:16px;">🕹 TELEOP (방향키 / 스페이스바 정지)</div>
+                <!-- 방향 버튼(왼쪽) + 속도 슬라이더(오른쪽) 가로 배치 -->
+                <div style="display:flex; gap:32px; align-items:center;">
+
+                    <!-- 3x3 그리드 방향 버튼 패드 -->
+                    <div style="display:grid; grid-template-columns:repeat(3,64px); grid-template-rows:repeat(3,64px); gap:8px;">
+                        <!-- 빈 셀 (왼쪽 위) -->
+                        <div></div>
+                        <!-- 전진 버튼 -->
+                        <button id="btn-f" style="border-radius:8px; border:2px solid #ddd; background:#fff; font-size:1.4rem; cursor:pointer;">▲</button>
+                        <!-- 빈 셀 (오른쪽 위) -->
+                        <div></div>
+                        <!-- 좌회전 버튼 -->
+                        <button id="btn-l" style="border-radius:8px; border:2px solid #ddd; background:#fff; font-size:1.4rem; cursor:pointer;">◀</button>
+                        <!-- 정지 버튼 (빨간 계열) -->
+                        <button id="btn-s" style="border-radius:8px; border:2px solid #ffcdd2; background:#fff3f3; font-size:0.8rem; font-weight:bold; color:#c62828; cursor:pointer;">STOP</button>
+                        <!-- 우회전 버튼 -->
+                        <button id="btn-r" style="border-radius:8px; border:2px solid #ddd; background:#fff; font-size:1.4rem; cursor:pointer;">▶</button>
+                        <!-- 빈 셀 (왼쪽 아래) -->
+                        <div></div>
+                        <!-- 후진 버튼 -->
+                        <button id="btn-b" style="border-radius:8px; border:2px solid #ddd; background:#fff; font-size:1.4rem; cursor:pointer;">▼</button>
+                        <!-- 빈 셀 (오른쪽 아래) -->
+                        <div></div>
+                    </div>
+
+                    <!-- 속도 슬라이더 영역 -->
+                    <div style="flex:1;">
+                        <!-- 선속도 레이블 -->
+                        <label style="font-size:0.8rem; color:#aaa;">Linear Speed (m/s)</label>
+                        <!-- 선속도 슬라이더: 0.05~0.5 m/s, 기본값 0.2 -->
+                        <input type="range" id="lin-spd" min="0.05" max="0.5" step="0.05" value="0.2" style="width:100%; margin:4px 0;">
+                        <!-- 선속도 현재값 표시 (JS로 업데이트) -->
+                        <div id="lin-val" style="font-size:0.85rem; font-weight:bold; margin-bottom:12px;">0.20 m/s</div>
+                        <!-- 각속도 레이블 -->
+                        <label style="font-size:0.8rem; color:#aaa;">Angular Speed (rad/s)</label>
+                        <!-- 각속도 슬라이더: 0.1~1.0 rad/s, 기본값 0.5 -->
+                        <input type="range" id="ang-spd" min="0.1" max="1.0" step="0.1" value="0.5" style="width:100%; margin:4px 0;">
+                        <!-- 각속도 현재값 표시 (JS로 업데이트) -->
+                        <div id="ang-val" style="font-size:0.85rem; font-weight:bold;">0.50 rad/s</div>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+</div>
+
+<script>
+  // 선속도/각속도 슬라이더 DOM 요소 참조
+  const linSpd = document.getElementById('lin-spd');
+  const angSpd = document.getElementById('ang-spd');
+  // 선속도 슬라이더 변경 시 표시값 업데이트 (소수점 2자리)
+  linSpd.oninput = () => document.getElementById('lin-val').textContent = parseFloat(linSpd.value).toFixed(2) + ' m/s';
+  // 각속도 슬라이더 변경 시 표시값 업데이트 (소수점 2자리)
+  angSpd.oninput = () => document.getElementById('ang-val').textContent = parseFloat(angSpd.value).toFixed(2) + ' rad/s';
+
+  // 로봇 이동 명령을 서버로 전송하는 함수 (linear: 선속도, angular: 각속도)
+  function cmd(l, a) {
+    fetch('/api/robot/cmd', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      // 선속도와 각속도를 JSON 바디로 전송
+      body: JSON.stringify({linear: l, angular: a})
+    // 오류 발생 시 콘솔에 경고만 출력
+    }).catch(e => console.warn('[cmd 실패]', e));
+  }
+
+  // 전진 버튼 마우스 누름: 양의 선속도로 전진
+  document.getElementById('btn-f').addEventListener('mousedown',  () => cmd(+parseFloat(linSpd.value), 0));
+  // 후진 버튼 마우스 누름: 음의 선속도로 후진
+  document.getElementById('btn-b').addEventListener('mousedown',  () => cmd(-parseFloat(linSpd.value), 0));
+  // 좌회전 버튼 마우스 누름: 양의 각속도로 좌회전
+  document.getElementById('btn-l').addEventListener('mousedown',  () => cmd(0, +parseFloat(angSpd.value)));
+  // 우회전 버튼 마우스 누름: 음의 각속도로 우회전
+  document.getElementById('btn-r').addEventListener('mousedown',  () => cmd(0, -parseFloat(angSpd.value)));
+  // 정지 버튼 클릭: 선속도/각속도 모두 0으로 정지
+  document.getElementById('btn-s').addEventListener('click',      () => cmd(0, 0));
+  // 방향 버튼 마우스 뗄 때 / 영역 벗어날 때 자동 정지
+  ['btn-f','btn-b','btn-l','btn-r'].forEach(id => {
+    document.getElementById(id).addEventListener('mouseup',    () => cmd(0, 0));
+    document.getElementById(id).addEventListener('mouseleave', () => cmd(0, 0));
+  });
+
+  // 키보드 방향키 → 버튼 ID 매핑 테이블
+  const keyMap = {'ArrowUp':'btn-f','ArrowDown':'btn-b','ArrowLeft':'btn-l','ArrowRight':'btn-r'};
+  // 키 이벤트를 무시할 입력 태그 목록 (폼 입력 중 방향키 오작동 방지)
+  const INPUT_TAGS = ['INPUT', 'TEXTAREA', 'SELECT'];
+  // 키보드 키 누름 이벤트: 방향키 → 해당 버튼 mousedown 발생, 스페이스바 → 정지
+  document.addEventListener('keydown', e => {
+    if (INPUT_TAGS.includes(document.activeElement.tagName)) return; // 입력 중이면 무시
+    if (keyMap[e.key]) { e.preventDefault(); document.getElementById(keyMap[e.key]).dispatchEvent(new Event('mousedown')); }
+    if (e.key === ' ') { e.preventDefault(); cmd(0, 0); } // 스페이스바 정지
+  });
+  // 키보드 키 뗌 이벤트: 방향키 뗄 때 정지
+  document.addEventListener('keyup', e => {
+    if (INPUT_TAGS.includes(document.activeElement.tagName)) return; // 입력 중이면 무시
+    if (keyMap[e.key]) cmd(0, 0);
+  });
+
+  // 카메라 관련 DOM 요소 참조
+  const camBadge   = document.getElementById('cam-badge');   // 상태 배지
+  const streamImg  = document.getElementById('stream-img');  // 스트리밍 이미지
+  const noScreen   = document.getElementById('no-screen');   // 카메라 없음 안내
+  const camLoading = document.getElementById('cam-loading'); // 로딩 스피너
+
+  // 카메라 토픽 수신 불가 시 호출: 스피너/이미지 숨기고 안내 표시
+  function showNoScreen() {
+    camLoading.style.display = 'none';
+    streamImg.style.display  = 'none';
+    noScreen.style.display   = 'flex';
+    // 배지를 '토픽 없음' 빨간 스타일로 변경
+    camBadge.className       = 'cam-badge unavailable';
+    camBadge.textContent     = '🔴 토픽 없음';
+  }
+
+  // 카메라 스트리밍 수신 가능 시 호출: 스피너/안내 숨기고 이미지 표시
+  function showStream() {
+    camLoading.style.display = 'none';
+    noScreen.style.display   = 'none';
+    streamImg.style.display  = 'block';
+    // 배지를 '수신 중' 초록 스타일로 변경
+    camBadge.className       = 'cam-badge available';
+    camBadge.textContent     = '🟢 수신 중';
+  }
+
+  // 카메라 상태 API를 폴링해 수신 가능 여부 확인
+  function checkCamera() {
+    fetch('/api/camera/status')
+      .then(r => r.json())
+      .then(res => {
+        // available이 true면 스트림 표시, 아니면 안내 표시
+        res.data && res.data.available ? showStream() : showNoScreen();
+      })
+      // 네트워크 오류 시 카메라 없음 처리
+      .catch(() => showNoScreen());
+  }
+
+  // 폴링 타이머 ID (clearInterval에 사용)
+  let timer = null;
+  // 연결 끊김 배너 요소 참조
+  const banner = document.getElementById('conn-banner');
+
+  // 로봇 상태 API를 호출해 UI를 최신 데이터로 업데이트하는 함수
+  function update() {
+    fetch('/api/robot/status')
+      .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(res => {
+        // 정상 응답 시 연결 오류 배너 숨김
+        banner.classList.remove('show');
+        const d = res.data;
+        const pct = d.battery_pct;
+        // 배터리 퍼센트/전압 텍스트 업데이트
+        document.getElementById('bat-pct').textContent  = pct + ' %';
+        document.getElementById('bat-volt').textContent = d.battery_voltage + ' V';
+        const bar = document.getElementById('bat-bar');
+        // 배터리 바 너비를 잔량에 맞게 조절
+        bar.style.width      = pct + '%';
+        // 잔량에 따라 바 색상 변경: 50% 초과=파랑, 20% 초과=주황, 이하=빨강
+        bar.style.background = pct > 50 ? '#1759bb' : pct > 20 ? '#ff9800' : '#f44336';
+
+        // 오도메트리 X/Y/YAW 텍스트 업데이트
+        document.getElementById('odom-x').textContent   = d.odom_x;
+        document.getElementById('odom-y').textContent   = d.odom_y;
+        document.getElementById('odom-yaw').textContent = d.odom_yaw + '°';
+
+        // AMCL 활성 여부에 따라 배지 및 위치값 업데이트
+        const badge = document.getElementById('amcl-badge');
+        if (d.amcl_active) {
+          // AMCL 활성: 초록 배지로 변경
+          badge.textContent        = '활성';
+          badge.style.background   = '#e8f5e9';
+          badge.style.color        = '#2e7d32';
+          // AMCL X/Y/YAW 값 업데이트
+          document.getElementById('amcl-x').textContent   = d.amcl_x;
+          document.getElementById('amcl-y').textContent   = d.amcl_y;
+          document.getElementById('amcl-yaw').textContent = d.amcl_yaw + '°';
+        }
+      })
+      // API 오류 시 연결 끊김 배너 표시
+      .catch(() => banner.classList.add('show'));
+  }
+
+  // robot6 상태 업데이트
+  function updateRobot6() {
+    fetch('/api/robot6/status')
+      .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(res => {
+        const d = res.data;
+        const pct = d.battery_pct;
+        document.getElementById('r6-bat-pct').textContent  = pct + ' %';
+        document.getElementById('r6-bat-volt').textContent = d.battery_voltage + ' V';
+        const bar = document.getElementById('r6-bat-bar');
+        bar.style.width      = pct + '%';
+        bar.style.background = pct > 50 ? '#2e7d32' : pct > 20 ? '#ff9800' : '#f44336';
+
+        document.getElementById('r6-odom-x').textContent   = d.odom_x;
+        document.getElementById('r6-odom-y').textContent   = d.odom_y;
+        document.getElementById('r6-odom-yaw').textContent = d.odom_yaw + '°';
+
+        const badge = document.getElementById('r6-amcl-badge');
+        if (d.amcl_active) {
+          badge.textContent      = '활성';
+          badge.style.background = '#e8f5e9';
+          badge.style.color      = '#2e7d32';
+          document.getElementById('r6-amcl-x').textContent   = d.amcl_x;
+          document.getElementById('r6-amcl-y').textContent   = d.amcl_y;
+          document.getElementById('r6-amcl-yaw').textContent = d.amcl_yaw + '°';
+        }
+      })
+      .catch(() => {});  // robot6 오프라인이어도 robot1 패널에 영향 없음
+  }
+
+  // 폴링 시작: 카메라 확인 후 500ms 간격으로 update/checkCamera 반복 호출
+  function startPolling() {
+    checkCamera();
+    timer = setInterval(() => { update(); updateRobot6(); checkCamera(); }, 500);
+    update();
+    updateRobot6();
+  }
+  // 폴링 중지: 타이머 해제
+  function stopPolling() { clearInterval(timer); }
+
+  // 탭 숨김/복귀 시 폴링 자동 중지/재시작 (배터리 절약)
+  document.addEventListener('visibilitychange', () => {
+    document.hidden ? stopPolling() : startPolling();
+  });
+
+  // 페이지 로드 시 폴링 시작
+  startPolling();
+</script>
+
+    <script src="/static/emergency_popup.js"></script>
+</body>
+</html>

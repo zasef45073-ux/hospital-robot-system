@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>🏥 Hospital - 순찰 계획</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { margin: 0; font-family: 'Segoe UI', Roboto, sans-serif; display: flex; height: 100vh; background-color: #f4f7fa; }
+
+        /* ── 사이드바 ── */
+        .sidebar { width: 220px; background-color: #0f3f8a; color: white; display: flex; flex-direction: column; padding-top: 20px; flex-shrink: 0; }
+        .sidebar h2 { text-align: center; margin-bottom: 30px; font-size: 1.2rem; }
+        .sidebar a { padding: 15px 25px; color: white; text-decoration: none; display: block; transition: 0.2s; font-size: 0.95rem; }
+        .sidebar a:hover { background-color: #1759bb; }
+        .sidebar a.active { background-color: #1759bb; font-weight: bold; border-left: 5px solid #fff; }
+
+        /* ── 메인 ── */
+        .main { flex: 1; padding: 35px; overflow-y: auto; }
+        .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 22px; }
+        .logout { background: #1759bb; color: white; padding: 8px 18px; border-radius: 6px; text-decoration: none; font-size: 14px; }
+
+        /* ── 병동 상태 배너 ── */
+        .ward-status-bar {
+            display: flex; gap: 10px; flex-wrap: wrap; align-items: center;
+            background: white; border-radius: 10px; padding: 12px 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 22px;
+            font-size: 0.88rem;
+        }
+        .ward-status-bar .bar-label { font-weight: 700; color: #555; margin-right: 4px; }
+        .ward-chip { display: inline-flex; align-items: center; gap: 5px;
+                     border-radius: 20px; padding: 4px 12px; font-size: 0.82rem; font-weight: 700; }
+        .ward-chip.on  { background: #e8f5e9; color: #2e7d32; }
+        .ward-chip.off { background: #ffebee; color: #c62828; }
+        .ward-chip .chip-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+        .ward-notice { margin-left: auto; font-size: 0.78rem; color: #aaa; }
+
+        /* ── 섹션 카드 ── */
+        .section-card { background: white; border-radius: 12px; padding: 28px 30px; margin-bottom: 26px; box-shadow: 0 2px 10px rgba(0,0,0,0.06); }
+        .section-title { font-size: 1.1rem; font-weight: bold; margin-bottom: 22px; display: flex; align-items: center; gap: 10px; color: #333; }
+
+        /* ── 입력 그리드 ── */
+        .form-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
+        .form-group { display: flex; flex-direction: column; gap: 8px; }
+        .form-group label { font-size: 0.88rem; font-weight: 600; color: #555; }
+        .form-group input,
+        .form-group select { padding: 11px 12px; border: 1.5px solid #ddd; border-radius: 8px; font-size: 0.93rem; outline: none; width: 100%; }
+        .form-group input:focus,
+        .form-group select:focus { border-color: #3b82f6; }
+        .form-group select:disabled { background: #f5f5f5; color: #aaa; cursor: not-allowed; }
+
+        /* 비활성 위치 option 스타일 (브라우저 지원 범위 내) */
+        option.inactive { color: #bbb; background: #fafafa; }
+
+        /* ── 비활성 경고 박스 ── */
+        .inactive-warn {
+            display: none; background: #fff8e1; border: 1px solid #ffe082;
+            border-radius: 8px; padding: 10px 14px; font-size: 0.85rem;
+            color: #e65100; margin-top: 12px; align-items: center; gap: 8px;
+        }
+        .inactive-warn.show { display: flex; }
+
+        /* ── 액션바 ── */
+        .action-bar { display: flex; justify-content: space-between; align-items: center;
+                      margin-top: 26px; border-top: 1px solid #eee; padding-top: 22px; flex-wrap: wrap; gap: 12px; }
+        .action-left  { display: flex; align-items: center; gap: 12px; }
+        .action-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .path-input { padding: 10px 12px; border: 1.5px solid #ddd; border-radius: 8px; font-size: 0.9rem; outline: none; width: 172px; }
+
+        /* ── 버튼 ── */
+        .btn { padding: 11px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; border: none; transition: 0.2s; font-size: 0.88rem; }
+        .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .btn-blue    { background: #3b82f6; color: white; }
+        .btn-blue:not(:disabled):hover { background: #2563eb; }
+        .btn-outline { background: white; color: #3b82f6; border: 1.5px solid #3b82f6; }
+        .btn-outline:not(:disabled):hover { background: #eff6ff; }
+        .btn-green   { background: #16a34a; color: white; }
+        .btn-green:not(:disabled):hover { background: #15803d; }
+        .btn-red     { background: #ef4444; color: white; padding: 6px 13px; border-radius: 5px; font-size: 0.83rem; font-weight: bold; cursor: pointer; border: none; transition: 0.2s; }
+        .btn-red:hover { background: #dc2626; }
+        .btn-orange  { background: #f97316; color: white; padding: 7px 13px; border-radius: 6px; font-size: 0.83rem; font-weight: bold; cursor: pointer; border: none; transition: 0.2s; }
+        .btn-orange:not(:disabled):hover { background: #ea580c; }
+        .btn-orange:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        /* ── 테이블 ── */
+        table { width: 100%; border-collapse: collapse; margin-top: 18px; }
+        thead th { background: #f1f5f9; padding: 13px 12px; font-size: 0.83rem; font-weight: 700;
+                   color: #64748b; text-align: left; border-bottom: 2px solid #e2e8f0; }
+        tbody td { padding: 13px 12px; border-bottom: 1px solid #f1f5f9; font-size: 0.88rem; color: #334155; vertical-align: middle; }
+        tbody tr:hover { background: #f8fafc; }
+        tbody tr.row-inactive { background: #fafafa; }
+        tbody tr.row-inactive td { color: #aaa; }
+        .empty-row td { text-align: center; color: #94a3b8; padding: 30px; }
+
+        /* ── 뱃지 ── */
+        .badge-detect    { background: #dcfce7; color: #166534; border-radius: 10px; padding: 3px 10px; font-size: 0.78rem; font-weight: 700; white-space: nowrap; }
+        .badge-nodetect  { background: #f1f5f9; color: #64748b; border-radius: 10px; padding: 3px 10px; font-size: 0.78rem; white-space: nowrap; }
+        .badge-ward-off  { background: #ffebee; color: #c62828; border-radius: 10px; padding: 3px 10px; font-size: 0.78rem; font-weight: 700; white-space: nowrap; }
+        .badge-ward-on   { background: #e8f5e9; color: #2e7d32; border-radius: 10px; padding: 3px 10px; font-size: 0.78rem; font-weight: 700; white-space: nowrap; }
+
+        /* ── 순찰 실행 패널 ── */
+        .run-panel { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+        .run-panel label { font-weight: 600; font-size: 0.88rem; color: #555; }
+        .run-panel select { padding: 9px 12px; border: 1.5px solid #ddd; border-radius: 8px; font-size: 0.88rem; outline: none; }
+        .patrol-preview { margin-top: 16px; }
+        .patrol-preview-title { font-size: 0.83rem; font-weight: 700; color: #888; margin-bottom: 10px; }
+        .patrol-badge-list { display: flex; flex-wrap: wrap; gap: 7px; min-height: 34px; }
+        .patrol-badge         { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe;
+                                border-radius: 20px; padding: 4px 11px; font-size: 0.8rem; font-weight: 600; }
+        .patrol-badge.detect  { background: #f0fdf4; color: #166534; border-color: #bbf7d0; }
+        .patrol-badge.skipped { background: #fafafa; color: #bbb; border: 1px dashed #e0e0e0;
+                                text-decoration: line-through; font-size: 0.78rem; }
+
+        /* ── 토스트 ── */
+        #toast { position: fixed; bottom: 28px; right: 28px; background: #1d4ed8; color: #fff;
+                 padding: 11px 20px; border-radius: 8px; font-size: 0.87rem;
+                 opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 9999; }
+        #toast.show { opacity: 1; }
+    </style>
+</head>
+<body>
+
+<!-- 사이드바 -->
+<nav class="sidebar">
+    <h2>🏥 Hospital</h2>
+    <a href="{{ url_for('main') }}">대시보드</a>
+    <a href="{{ url_for('patient') }}">환자</a>
+    <a href="{{ url_for('robot_status') }}">로봇 상태</a>
+    <a href="{{ url_for('camera') }}">실시간 카메라</a>
+    <a href="{{ url_for('robot_plan') }}" class="active">순찰 계획</a>
+    <a href="{{ url_for('patrol_control') }}">순찰 실행</a>
+</nav>
+
+<main class="main">
+    <div class="topbar">
+        <h2 style="margin:0; font-size:1.5rem;">🤖 순찰 계획 관리</h2>
+        <a href="{{ url_for('logout') }}" class="logout">Logout</a>
+    </div>
+
+    <!-- ── 병동 운영 상태 배너 ── -->
+    <div class="ward-status-bar">
+        <span class="bar-label">🏥 병동 운영 상태</span>
+        {% for ward in all_ward_names %}
+            {% if ward in active_wards %}
+            <span class="ward-chip on"><span class="chip-dot"></span>{{ ward }} 운영 중</span>
+            {% else %}
+            <span class="ward-chip off"><span class="chip-dot"></span>{{ ward }} 중단</span>
+            {% endif %}
+        {% else %}
+            <span style="color:#bbb; font-size:0.82rem;">등록된 병동 없음</span>
+        {% endfor %}
+        <span class="ward-notice">⚠️ 중단 병동 위치는 순찰 계획에서 비활성화됩니다</span>
+    </div>
+
+    <!-- ── 새 순찰 계획 추가 ── -->
+    <section class="section-card">
+        <div class="section-title">➕ 새 순찰 계획 추가</div>
+
+        <div class="form-grid">
+            <div class="form-group">
+                <label>순찰 경로 선택</label>
+                <select id="in-path-select" onchange="autoFillCoords()">
+                    <option value="">— 선택하세요 —</option>
+                    {% for loc in locations %}
+                    <option value="{{ loc.name }}"
+                            data-x="{{ loc.x }}" data-y="{{ loc.y }}"
+                            data-yaw="{{ loc.yaw }}"
+                            data-detect="{{ 'true' if loc.detect else 'false' }}"
+                            data-ward-active="{{ 'true' if loc.ward_active else 'false' }}"
+                            {% if not loc.ward_active %}class="inactive" disabled{% endif %}>
+                        {% if not loc.ward_active %}🚫{% elif loc.detect %}🟢{% else %}⚪{% endif %} {{ loc.name }}{% if not loc.ward_active %} (병동 중단){% endif %}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>X 좌표</label>
+                <input type="number" id="in-x" value="0" step="0.001" placeholder="자동 입력">
+            </div>
+            <div class="form-group">
+                <label>Y 좌표</label>
+                <input type="number" id="in-y" value="0" step="0.001" placeholder="자동 입력">
+            </div>
+            <div class="form-group">
+                <label>각도 θ</label>
+                <input type="number" id="in-yaw" value="0" step="0.001" placeholder="자동 입력">
+            </div>
+            <div class="form-group">
+                <label>주변 감지 (fulfill)</label>
+                <select id="in-spin">
+                    <option value="false">⚪ 이동만</option>
+                    <option value="true">🟢 주변 감지</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>순찰 로봇</label>
+                <select id="in-robot-select">
+                    <option value="1">로봇 1</option>
+                    <option value="2">로봇 2</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- 비활성 병동 선택 시 경고 -->
+        <div class="inactive-warn" id="inactive-warn">
+            ⚠️ <strong id="inactive-ward-name"></strong> 은(는) 현재 운영이 중단된 병동입니다. 해당 위치는 순찰 계획에 추가할 수 없습니다.
+        </div>
+
+        <div class="action-bar">
+            <div class="action-left">
+                <span style="font-size:0.83rem; color:#999;">경로 선택 시 좌표·감지 자동 입력됩니다.</span>
+            </div>
+            <div class="action-right">
+                <span style="font-size:0.88rem; font-weight:bold; color:#555;">직접 경로명</span>
+                <input type="text" id="new-path-name" class="path-input" placeholder="커스텀 경로 이름">
+                <button class="btn btn-outline" onclick="addNewPathName()">경로명 추가</button>
+                <button class="btn btn-blue" id="btn-add-plan" onclick="addPlanRow()">➕ 계획 추가</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- ── 순찰 계획 목록 ── -->
+    <section class="section-card">
+        <div class="section-title" style="justify-content:space-between; flex-wrap:wrap; gap:10px;">
+            <span>📋 순찰 계획 목록</span>
+            <div class="run-panel">
+                <label>로봇 선택</label>
+                <select id="run-robot-select">
+                    <option value="0">전체 로봇</option>
+                    <option value="1">로봇 1</option>
+                    <option value="2">로봇 2</option>
+                </select>
+                <button class="btn btn-green" onclick="runPlanAsPatrol()">▶ 패트롤로 실행</button>
+                <button class="btn btn-outline" onclick="loadPlanPreview()">🔍 미리보기</button>
+            </div>
+        </div>
+
+        <!-- 패트롤 미리보기 -->
+        <div class="patrol-preview" id="patrol-preview" style="display:none;">
+            <div class="patrol-preview-title">📍 패트롤 순서 미리보기
+                <span style="font-weight:400; color:#bbb; font-size:0.78rem; margin-left:6px;">
+                    🚫 줄긋기 = 중단 병동 (자동 건너뜀)
+                </span>
+            </div>
+            <div class="patrol-badge-list" id="patrol-badge-list"></div>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>로봇</th>
+                    <th>순찰 경로</th>
+                    <th>X</th><th>Y</th><th>θ</th>
+                    <th>주변 감지</th>
+                    <th>병동 상태</th>
+                    <th>작업</th>
+                </tr>
+            </thead>
+            <tbody id="plan-list-body">
+                {% for plan in plan_list %}
+                <tr data-plan-id="{{ plan.plan_ID }}"
+                    data-room-name="{{ plan.room_name }}"
+                    data-ward-active="{{ 'true' if plan.ward_active else 'false' }}"
+                    class="{{ '' if plan.ward_active else 'row-inactive' }}">
+                    <td style="color:#aaa; font-size:0.82rem;">{{ plan.plan_ID }}</td>
+                    <td>로봇 {{ plan.robot_num }}</td>
+                    <td>
+                        <b>{{ plan.room_name }}</b>
+                        {% if not plan.ward_active %}
+                        <span style="font-size:0.75rem; color:#f97316; margin-left:4px;">⚠️ 중단</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ plan.x_pose }}</td>
+                    <td>{{ plan.y_pose }}</td>
+                    <td>{{ plan.yaw }}</td>
+                    <td>
+                        {% if plan.fulfill %}
+                        <span class="badge-detect">🟢 주변 감지</span>
+                        {% else %}
+                        <span class="badge-nodetect">⚪ 이동만</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if plan.ward_active %}
+                        <span class="badge-ward-on">🟢 운영 중</span>
+                        {% else %}
+                        <span class="badge-ward-off">🚫 중단</span>
+                        {% endif %}
+                    </td>
+                    <td style="display:flex; gap:6px; flex-wrap:wrap;">
+                        <button class="btn-orange"
+                                {% if not plan.ward_active %}disabled title="병동 중단으로 순찰 불가"{% endif %}
+                                onclick="sendSingleToPatrol(this)">▶ 패트롤</button>
+                        <button class="btn-red" onclick="deletePlanRow(this)">삭제</button>
+                    </td>
+                </tr>
+                {% else %}
+                <tr class="empty-row" id="empty-row">
+                    <td colspan="9">등록된 순찰 계획이 없습니다.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <!-- 비활성 행 안내 -->
+        {% set inactive_count = plan_list | selectattr('ward_active', 'equalto', False) | list | length %}
+        {% if inactive_count > 0 %}
+        <p style="margin:14px 0 0; font-size:0.82rem; color:#e65100;">
+            ⚠️ <b>{{ inactive_count }}개</b> 계획이 중단된 병동에 속해 패트롤 실행에서 자동으로 제외됩니다.
+        </p>
+        {% endif %}
+    </section>
+</main>
+
+<div id="toast"></div>
+
+<script>
+    /* ── 토스트 ── */
+    function showToast(msg, isError = false) {
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.style.background = isError ? '#c0392b' : '#1d4ed8';
+        t.classList.add('show');
+        setTimeout(() => t.classList.remove('show'), 2600);
+    }
+
+    /* ── /api/locations로부터 위치 맵 로드 (plan_table 기반) ── */
+    async function fetchLocMap() {
+        try {
+            const res  = await fetch('/api/locations');
+            const data = await res.json();
+            if (!data.success) return {};
+            const map = {};
+            (data.locations || []).forEach(l => { map[l.name] = l; });
+            return map;
+        } catch { return {}; }
+    }
+
+    /* ── 경로 선택 시 좌표 자동 입력 + 비활성 경고 ── */
+    function autoFillCoords() {
+        const sel  = document.getElementById('in-path-select');
+        const opt  = sel.options[sel.selectedIndex];
+        const warn = document.getElementById('inactive-warn');
+        const btn  = document.getElementById('btn-add-plan');
+        if (!opt || !opt.value) {
+            warn.classList.remove('show');
+            btn.disabled = false;
+            return;
+        }
+        const wardActive = opt.dataset.wardActive === 'true';
+        document.getElementById('in-x').value    = opt.dataset.x   || 0;
+        document.getElementById('in-y').value    = opt.dataset.y   || 0;
+        document.getElementById('in-yaw').value  = opt.dataset.yaw || 0;
+        document.getElementById('in-spin').value = opt.dataset.detect === 'true' ? 'true' : 'false';
+        document.getElementById('new-path-name').value = opt.value;
+
+        if (!wardActive) {
+            const wardName = opt.value.split('_')[0];
+            document.getElementById('inactive-ward-name').textContent = wardName;
+            warn.classList.add('show');
+            btn.disabled = true;
+        } else {
+            warn.classList.remove('show');
+            btn.disabled = false;
+        }
+    }
+
+    /* ── 커스텀 경로명 추가 (드롭다운에만 임시 추가, DB 저장은 계획 추가 시) ── */
+    function addNewPathName() {
+        const name = document.getElementById('new-path-name').value.trim();
+        if (!name) { showToast('경로 이름을 입력하세요.', true); return; }
+        const detect = document.getElementById('in-spin').value === 'true';
+        const sel = document.getElementById('in-path-select');
+        if (!Array.from(sel.options).find(o => o.value === name)) {
+            const opt = new Option(`${detect ? '🟢' : '⚪'} ${name}`, name);
+            opt.dataset.x          = document.getElementById('in-x').value || 0;
+            opt.dataset.y          = document.getElementById('in-y').value || 0;
+            opt.dataset.yaw        = document.getElementById('in-yaw').value || 0;
+            opt.dataset.detect     = detect ? 'true' : 'false';
+            opt.dataset.wardActive = 'true';
+            sel.add(opt);
+        }
+        sel.value = name;
+        showToast(`[${name}] 경로 등록됨 (계획 추가 버튼으로 DB 저장)`);
+    }
+
+    /* ── 계획 추가 (DB에 저장) ── */
+    async function addPlanRow() {
+        const pathName = document.getElementById('in-path-select').value
+                      || document.getElementById('new-path-name').value.trim();
+        if (!pathName) { showToast('순찰 경로를 선택하거나 이름을 입력하세요.', true); return; }
+
+        // 비활성 병동 차단 (드롭다운 data 속성 기준)
+        const sel = document.getElementById('in-path-select');
+        const selOpt = Array.from(sel.options).find(o => o.value === pathName);
+        if (selOpt && selOpt.dataset.wardActive === 'false') {
+            showToast('중단된 병동의 위치는 추가할 수 없습니다.', true); return;
+        }
+
+        const formData = new FormData();
+        formData.append('robot_num', document.getElementById('in-robot-select').value);
+        formData.append('room_name', pathName);
+        formData.append('pose_x',    document.getElementById('in-x').value);
+        formData.append('pose_y',    document.getElementById('in-y').value);
+        formData.append('yaw',       document.getElementById('in-yaw').value);
+        formData.append('fulfill',   document.getElementById('in-spin').value);
+        try {
+            const res = await fetch('/robot_plan', { method: 'POST', body: formData });
+            if (!res.ok) throw new Error('DB 저장 실패');
+        } catch (e) { showToast('계획 저장 실패: ' + e.message, true); return; }
+
+        showToast(`[${pathName}] 계획 추가 완료`);
+        window.location.reload();
+    }
+
+    /* ── 계획 삭제 ── */
+    async function deletePlanRow(btn) {
+        if (!confirm('정말 삭제하시겠습니까?')) return;
+        const row      = btn.closest('tr');
+        const planId   = row.dataset.planId;
+        const roomName = row.dataset.roomName;
+        try {
+            const res = await fetch('/api/plan/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ plan_id: planId, room_name: roomName })
+            });
+            if (!res.ok) throw new Error('삭제 실패');
+        } catch (e) { showToast('삭제 실패: ' + e.message, true); return; }
+
+        row.remove();
+        const tbody = document.getElementById('plan-list-body');
+        if (!tbody.querySelector('tr:not(.empty-row)')) {
+            tbody.innerHTML = '<tr class="empty-row"><td colspan="9">등록된 순찰 계획이 없습니다.</td></tr>';
+        }
+        showToast(`[${roomName}] 삭제 완료`);
+    }
+
+    /* ── 단일 항목 패트롤 전송 ── */
+    async function sendSingleToPatrol(btn) {
+        const row = btn.closest('tr');
+        if (row.dataset.wardActive === 'false') {
+            showToast('중단된 병동의 위치는 순찰할 수 없습니다.', true); return;
+        }
+        const roomName = row.dataset.roomName;
+        try {
+            const res = await fetch('/api/patrol/add', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: roomName })
+            });
+            const d = await res.json();
+            if (!d.success) throw new Error(d.message || '추가 실패');
+            showToast(`[${roomName}] → 패트롤 리스트 추가됨`);
+        } catch (e) { showToast('패트롤 추가 실패: ' + e.message, true); }
+    }
+
+    /* ── 미리보기 (비활성 항목은 취소선 배지) — /api/locations 기반 ── */
+    async function loadPlanPreview() {
+        const robotNum = document.getElementById('run-robot-select').value;
+        try {
+            const [planRes, locRes] = await Promise.all([
+                fetch('/api/plan/list'),
+                fetch('/api/locations')
+            ]);
+            const planData = await planRes.json();
+            const locData  = await locRes.json();
+            if (!planData.success) throw new Error('목록 조회 실패');
+
+            const locMap = {};
+            (locData.locations || []).forEach(l => { locMap[l.name] = l; });
+
+            let list = planData.list;
+            if (robotNum !== '0') list = list.filter(r => String(r.robot_num) === robotNum);
+
+            const preview  = document.getElementById('patrol-preview');
+            const badgeBox = document.getElementById('patrol-badge-list');
+            preview.style.display = 'block';
+
+            if (list.length === 0) {
+                badgeBox.innerHTML = '<span style="color:#aaa;font-size:0.85rem;">해당 계획 없음</span>';
+                return;
+            }
+            badgeBox.innerHTML = list.map((r, i) => {
+                const loc    = locMap[r.room_name];
+                const active = loc ? loc.ward_active : true;
+                if (!active) {
+                    return `<span class="patrol-badge skipped">${i + 1}. ${r.room_name} 🚫</span>`;
+                }
+                const cls = r.fulfill ? 'patrol-badge detect' : 'patrol-badge';
+                return `<span class="${cls}">${i + 1}. ${r.room_name} ${r.fulfill ? '🟢' : '⚪'}</span>`;
+            }).join('');
+        } catch (e) { showToast('미리보기 실패: ' + e.message, true); }
+    }
+
+    /* ── 패트롤 실행 (비활성 항목 자동 제외) — /api/locations 기반 ── */
+    async function runPlanAsPatrol() {
+        const robotNum = document.getElementById('run-robot-select').value;
+        const label    = robotNum === '0' ? '전체 로봇' : `로봇 ${robotNum}`;
+
+        // 비활성 항목 수 계산 (api/locations 기반)
+        const [planRes, locRes] = await Promise.all([
+            fetch('/api/plan/list'),
+            fetch('/api/locations')
+        ]);
+        const planData = await planRes.json();
+        const locData  = await locRes.json();
+        const locMap   = {};
+        (locData.locations || []).forEach(l => { locMap[l.name] = l; });
+
+        let list0 = planData.list || [];
+        if (robotNum !== '0') list0 = list0.filter(r => String(r.robot_num) === robotNum);
+        const skipCount = list0.filter(r => {
+            const loc = locMap[r.room_name]; return loc && !loc.ward_active;
+        }).length;
+        const runCount = list0.length - skipCount;
+
+        if (runCount === 0) {
+            showToast('실행 가능한 계획이 없습니다. (모든 항목이 중단 병동)', true); return;
+        }
+        const skipMsg = skipCount > 0 ? `\n⚠️ 중단 병동 ${skipCount}개는 자동으로 건너뜁니다.` : '';
+        if (!confirm(`${label}의 계획 ${runCount}개를 패트롤 리스트로 실행하시겠습니까?${skipMsg}`)) return;
+
+        try {
+            const res  = await fetch('/api/plan/run', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ robot_num: parseInt(robotNum) })
+            });
+            const data = await res.json();
+            if (!data.success) throw new Error(data.message || '실행 실패');
+
+            const preview  = document.getElementById('patrol-preview');
+            const badgeBox = document.getElementById('patrol-badge-list');
+            preview.style.display = 'block';
+            badgeBox.innerHTML = data.list.map((e, i) => {
+                const cls = e.detect ? 'patrol-badge detect' : 'patrol-badge';
+                return `<span class="${cls}">${i + 1}. ${e.name} ${e.detect ? '🟢' : '⚪'}</span>`;
+            }).join('');
+
+            const skipInfo = skipCount > 0 ? ` (${skipCount}개 중단 병동 제외)` : '';
+            showToast(`✅ ${data.count}개 계획 → 패트롤 적재 완료${skipInfo}`);
+        } catch (e) { showToast('실행 실패: ' + e.message, true); }
+    }
+</script>
+<script src="/static/emergency_popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>🏥 Hospital - 환자 및 병실 관리</title>
+    <style>
+        /* ── 기본 레이아웃 ── */
+        body { margin: 0; font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; background-color: #f0f2f5; }
+
+        /* ── 사이드바 ── */
+        .sidebar { width: 220px; background-color: #0f3f8a; color: white; display: flex; flex-direction: column; padding-top: 20px; flex-shrink: 0; }
+        .sidebar h2 { text-align: center; margin-bottom: 30px; }
+        .sidebar a { padding: 15px 25px; color: white; text-decoration: none; display: block; transition: 0.2s; }
+        .sidebar a:hover { background-color: #1759bb; }
+        .sidebar a.active { background-color: #1759bb; font-weight: bold; border-left: 5px solid #fff; }
+
+        /* ── 메인 ── */
+        .main { flex: 1; padding: 30px; overflow-y: auto; }
+        .topbar { display: flex; justify-content: flex-end; margin-bottom: 20px; }
+        .logout { background: #1759bb; color: white; padding: 8px 20px; border-radius: 4px; text-decoration: none; font-size: 14px; }
+
+        /* ── 그리드 / 카드 ── */
+        .content-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; }
+        .card { background: white; border-radius: 8px; padding: 25px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .card-title { font-size: 1.2rem; font-weight: bold; color: #3b82f6; margin-bottom: 20px; }
+
+        /* ── 입력 폼 ── */
+        .input-line { display: flex; gap: 15px; align-items: flex-end; margin-bottom: 25px; width: 100%; flex-wrap: wrap; }
+        .form-group { display: flex; flex-direction: column; gap: 8px; }
+        .form-group label { font-size: 0.85rem; color: #555; }
+        select, input[type="text"] { padding: 8px 12px; border: 1px solid #ccc; border-radius: 6px; background-color: #fff; outline: none; font-size: 0.9rem; }
+
+        /* ── 테이블 내 드롭다운 ── */
+        .table-select { padding: 4px 8px; border: 1px solid #ddd; font-size: 0.85rem; width: 85%; border-radius: 4px; }
+
+        /* ── 버튼 ── */
+        .btn-container { margin-left: auto; }
+        .btn-blue { background-color: #4a86e8; color: white; border: none; padding: 10px 22px; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .btn-blue:hover { background-color: #3b74d1; }
+        .btn-red { background-color: #ef4444; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; cursor: pointer; }
+        .btn-red:hover { background-color: #d32f2f; }
+
+        /* ── 테이블 ── */
+        .data-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        .table-header { background-color: #4a86e8; color: white; }
+        .table-header th { padding: 12px; font-size: 0.95rem; font-weight: bold; }
+        .data-table td { padding: 10px; border-bottom: 1px solid #eee; text-align: center; font-size: 0.9rem; }
+
+        /* ── 상태 색상 ── */
+        .status-normal    { color: #17bb40; }
+        .status-serious   { color: #ff9800; font-weight: bold; }
+        .status-emergency { color: #f44336; font-weight: bold; }
+
+        /* ── 토스트 알림 ── */
+        #toast { position: fixed; bottom: 30px; right: 30px; background: #333; color: #fff;
+                 padding: 12px 22px; border-radius: 8px; font-size: 0.9rem;
+                 opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 9999; }
+        #toast.show { opacity: 1; }
+    </style>
+</head>
+<body>
+
+    <!-- ── 사이드바 ── -->
+    <nav class="sidebar">
+        <h2>🏥 Hospital</h2>
+        <a href="{{ url_for('main') }}">대시보드</a>
+        <a href="{{ url_for('patient') }}" class="active">환자</a>
+        <a href="{{ url_for('robot_status') }}">로봇 상태</a>
+        <a href="{{ url_for('camera') }}">실시간 카메라</a>
+        <a href="{{ url_for('robot_plan') }}">순찰 계획</a>
+        <a href="{{ url_for('patrol_control') }}">순찰 실행</a>
+    </nav>
+
+    <!-- ── 메인 콘텐츠 ── -->
+    <main class="main">
+        <div class="topbar">
+            <a href="{{ url_for('logout') }}" class="logout">Logout</a>
+        </div>
+
+        <div class="content-grid">
+
+            <!-- 환자 목록 카드 -->
+            <section class="card">
+                <div class="card-title">👤 환자 목록</div>
+
+                <!-- 환자 등록 폼 -->
+                <div class="input-line">
+                    <div class="form-group">
+                        <label>병실 위치</label>
+                        <select id="p-room">
+                            <option>병실1</option>
+                            <option>병실2</option>
+                            <option>병실3</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>환자 침대</label>
+                        <select id="p-bed">
+                            <option>침대1</option>
+                            <option>침대2</option>
+                            <option>침대3</option>
+                            <option>침대4</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>환자 상태</label>
+                        <select id="p-status">
+                            <option>일반</option>
+                            <option>위험군</option>
+                            <option>고위험군</option>
+                        </select>
+                    </div>
+                    <div class="btn-container">
+                        <button class="btn-blue" onclick="addPatient()">환자 등록</button>
+                    </div>
+                </div>
+
+                <!-- 환자 테이블 -->
+                <table class="data-table">
+                    <thead class="table-header">
+                        <tr>
+                            <th>병실 위치</th>
+                            <th>환자 침대</th>
+                            <th>환자 상태</th>
+                            <th>작업</th>
+                        </tr>
+                    </thead>
+                    <tbody id="patient-list-body">
+                        {% for patient in patients %}
+                        <tr data-patient-id="{{ patient.id }}">
+                            <td>{{ patient.room }}</td>
+                            <td>{{ patient.bed }}</td>
+                            <td>
+                                <select class="table-select {{ 'status-emergency' if patient.status == '고위험군' else ('status-serious' if patient.status == '위험군' else 'status-normal') }}"
+                                        onchange="changePatientStatus(this)">
+                                    <option value="일반"   {{ 'selected' if patient.status == '일반'   else '' }}>일반</option>
+                                    <option value="위험군" {{ 'selected' if patient.status == '위험군' else '' }}>위험군</option>
+                                    <option value="고위험군" {{ 'selected' if patient.status == '고위험군' else '' }}>고위험군</option>
+                                </select>
+                            </td>
+                            <td>
+                                <button class="btn-red" onclick="deletePatient(this)">삭제</button>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="4" style="color:#aaa; padding:20px;">등록된 환자가 없습니다.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- 병실 목록 카드 -->
+            <section class="card">
+                <div class="card-title">🚪 병실 목록</div>
+
+                <!-- 병실 등록 폼 -->
+                <div class="input-line">
+                    <div class="form-group">
+                        <label>방 위치</label>
+                        <select id="r-pos">
+                            <option>병실1</option>
+                            <option>병실2</option>
+                            <option>병실3</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>내실 여부</label>
+                        <select id="r-in">
+                            <option>있음</option>
+                            <option>없음</option>
+                        </select>
+                    </div>
+                    <div class="btn-container">
+                        <button class="btn-blue" onclick="addRoom()">병실 등록</button>
+                    </div>
+                </div>
+
+                <!-- 병실 테이블 -->
+                <table class="data-table">
+                    <thead class="table-header">
+                        <tr>
+                            <th style="width:40%;">방 위치</th>
+                            <th style="width:30%;">내실</th>
+                            <th>작업</th>
+                        </tr>
+                    </thead>
+                    <tbody id="room-list-body">
+                        {% for room in rooms %}
+                        <tr data-room-id="{{ room.id }}">
+                            <td>{{ room.pos }}</td>
+                            <td>
+                                <select class="table-select">
+                                    <option value="있음" {{ 'selected' if room.inside == '있음' else '' }}>있음</option>
+                                    <option value="없음" {{ 'selected' if room.inside == '없음' else '' }}>없음</option>
+                                </select>
+                            </td>
+                            <td>
+                                <button class="btn-red" onclick="deleteRoom(this)">삭제</button>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="3" style="color:#aaa; padding:20px;">등록된 병실이 없습니다.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </section>
+
+        </div><!-- /.content-grid -->
+    </main>
+
+    <!-- ── 토스트 ── -->
+    <div id="toast"></div>
+
+    <script>
+        /* ── 토스트 헬퍼 ──────────────────────────────────────────── */
+        function showToast(msg, isError = false) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.style.background = isError ? '#c0392b' : '#333';
+            t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 2500);
+        }
+
+        /* ── 1. 환자 등록 ─────────────────────────────────────────── */
+        async function addPatient() {
+            const room   = document.getElementById('p-room').value;
+            const bed    = document.getElementById('p-bed').value;
+            const status = document.getElementById('p-status').value;
+
+            const res = await fetch('/api/patient', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ room, bed, status })
+            });
+            if (!res.ok) { showToast('환자 등록 실패', true); return; }
+            showToast('환자가 등록되었습니다.');
+            window.location.reload();
+        }
+
+        /* ── 2. 환자 상태 색상 변경 ───────────────────────────────── */
+        function changePatientStatus(sel) {
+            const v = sel.value;
+            sel.className = 'table-select ' +
+                (v === '고위험군' ? 'status-emergency' : v === '위험군' ? 'status-serious' : 'status-normal');
+        }
+
+        /* ── 3. 환자 삭제 ─────────────────────────────────────────── */
+        async function deletePatient(btn) {
+            if (!confirm('정말 삭제하시겠습니까?')) return;
+            const row       = btn.closest('tr');
+            const patientId = row.dataset.patientId;
+
+            const res = await fetch(`/api/patient/${patientId}`, { method: 'DELETE' });
+            if (!res.ok) { showToast('환자 삭제 실패', true); return; }
+            row.remove();
+            showToast('환자가 삭제되었습니다.');
+        }
+
+        /* ── 4. 병실 등록 ─────────────────────────────────────────── */
+        async function addRoom() {
+            const pos    = document.getElementById('r-pos').value;
+            const inside = document.getElementById('r-in').value;
+
+            const res = await fetch('/api/room', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ pos, inside })
+            });
+            if (!res.ok) { showToast('병실 등록 실패', true); return; }
+            showToast('병실이 등록되었습니다.');
+            window.location.reload();
+        }
+
+        /* ── 5. 병실 삭제 ─────────────────────────────────────────── */
+        async function deleteRoom(btn) {
+            if (!confirm('정말 삭제하시겠습니까?')) return;
+            const row    = btn.closest('tr');
+            const roomId = row.dataset.roomId;
+
+            const res = await fetch(`/api/room/${roomId}`, { method: 'DELETE' });
+            if (!res.ok) { showToast('병실 삭제 실패', true); return; }
+            row.remove();
+            showToast('병실이 삭제되었습니다.');
+        }
+    </script>
+    <script src="/static/emergency_popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Patient Management</title>
+
+<style>
+    /* 🔥 팀의 기본 사이드바 및 레이아웃 스타일 유지 */
+    body { margin: 0; font-family: Arial, sans-serif; display: flex; height: 100vh; background-color: #f3f4f6; }
+    
+    .sidebar {
+        width: 220px;
+        background-color: #0f3f8a;
+        color: white;
+        display: flex;
+        flex-direction: column;
+        padding-top: 20px;
+    }
+    .sidebar h2 { text-align: center; margin-bottom: 30px; }
+    .sidebar a {
+        padding: 15px;
+        color: white;
+        text-decoration: none;
+        display: block;
+        transition: 0.3s;
+    }
+    .sidebar a:hover { background-color: #1759bb; }
+    .sidebar a.active { background-color: #1759bb; font-weight: bold; }
+
+    .main { flex: 1; padding: 25px; overflow-y: auto; }
+    
+    .topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 25px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #ddd;
+    }
+    .logout {
+        background: #1759bb;
+        color: white;
+        padding: 8px 16px;
+        border-radius: 4px;
+        text-decoration: none;
+        font-size: 14px;
+    }
+
+    /* 📊 요약 카드 컨테이너: 가로 정렬 설정 */
+    .summary-container {
+        display: flex;
+        justify-content: center; /* 중앙 정렬 */
+        gap: 25px;              /* 카드 사이 간격 */
+        margin-bottom: 25px;
+    }
+
+    .card {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        text-align: center;
+    }
+    
+    /* 카드 각각의 너비 설정 */
+    .summary-card { width: 300px; } 
+    
+    .card h4 { margin: 0; color: #666; font-size: 0.85rem; text-transform: uppercase; }
+    .card .value { font-size: 2.5rem; font-weight: bold; color: #0f3f8a; margin: 10px 0; }
+
+    .location-box {
+        background: #f8f9ff;
+        border: 2px solid #e0e4f0;
+        border-radius: 12px;
+        padding: 40px;
+        margin-top: 20px;
+        text-align: center;
+    }
+
+    .zone-name {
+        font-size: 3rem;
+        font-weight: bold;
+        color: #1759bb;
+        display: block;
+        margin: 15px 0;
+    }
+
+    .pos-label {
+        display: inline-block;
+        padding: 6px 15px;
+        border-radius: 20px;
+        font-weight: bold;
+        font-size: 0.9rem;
+        background: #e8f5e9;
+        color: #2e7d32;
+    }
+
+    .btn-alert-test {
+        background-color: #d32f2f;
+        color: white;
+        border: none;
+        padding: 15px 30px;
+        border-radius: 10px;
+        font-size: 1.1rem;
+        font-weight: bold;
+        cursor: pointer;
+        margin-top: 30px;
+        box-shadow: 0 4px 10px rgba(211, 47, 47, 0.3);
+        transition: 0.2s;
+    }
+    .btn-alert-test:hover { background-color: #b71c1c; transform: translateY(-2px); }
+</style>
+</head>
+
+<body>
+
+<!-- 🔥 사이드바 -->
+<div class="sidebar">
+    <h2 style="text-align:center;">🏥 Hospital</h2>
+    <a href="{{ url_for('main') }}">대시보드</a>
+    <a href="{{ url_for('patient') }}">환자</a>
+    <a href="{{ url_for('robot_status') }}">로봇 상태</a>
+    <a href="{{ url_for('camera') }}">실시간 카메라</a>
+    <a href="{{ url_for('robot_plan') }}">순찰 계획</a>
+        <a href="{{ url_for('patrol_control') }}">순찰 실행</a>
+
+</div>
+
+<div id="emergency-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center;">
+    <div style="background: white; width: 400px; padding: 30px; border-radius: 15px; text-align: center; border: 5px solid #d32f2f; animation: shake 0.5s infinite;">
+        <h1 style="color: #d32f2f; margin-top: 0;">🚨 위급 상황</h1>
+        <hr>
+        <p style="font-size: 1.2rem; font-weight: bold; margin: 20px 0;">
+            환자에게 응급 상황이 발생했습니다!<br>
+            <span id="popup-message" style="color: #d32f2f;">응급환자1234</span>
+        </p>
+        <button onclick="closeModal()" style="background: #d32f2f; color: white; border: none; padding: 10px 30px; border-radius: 5px; font-weight: bold; cursor: pointer;">확인 완료</button>
+    </div>
+</div>
+
+<div class="main">
+
+    <div class="topbar">
+        <h3>Welcome, {{ username }} 👋</h3>
+        <a href="{{ url_for('logout') }}" class="logout">Logout</a>
+    </div>
+
+    <div class="summary-container">
+        <div class="card summary-card">
+            <h4>총 환자 수</h4>
+            <div class="value" id="total-patients">12</div>
+        </div>
+        <div class="card summary-card">
+            <h4>가동 병실 수</h4>
+            <div class="value" id="active-rooms">2</div>
+        </div>
+    </div>
+
+    <div class="card" style="text-align: left;">
+        <h3 style="margin-top:0;">📍 실시간 환자 위치 모니터링</h3>
+        <div class="pos-label">시스템 정상 가동 중</div>
+        
+        <div class="location-box">
+            <div style="color:#aaa; font-size:1.1rem;">환자 현재 위치</div>
+            <span id="patient-zone" class="zone-name">병동 1</span>
+            <div style="color:#ccc; font-size:0.9rem; margin-top:20px;">
+                정밀 데이터(X, Y): [<span id="raw-coord">0.00, 0.00</span>]
+            </div>
+        </div>
+
+        <div style="text-align: center;">
+            <button class="btn-alert-test" onclick="showEmergencyAlert()">🚨 응급 상황 알림 테스트</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let isAlertActive = false;
+
+    function showEmergencyAlert() {
+        const currentZone = document.getElementById('patient-zone').innerText;
+        alert(`[🚨 응급 상황 발생]\n구역: ${currentZone}\n의료진의 즉각적인 확인이 필요합니다!`);
+    }
+
+    function getZoneName(x, y) {
+        if (x > 1.0 && x < 2.0 && y > 1.5) return "병실 2";
+        if (x > 1.0 && x < 2.0 && y < -1.5) return "병실 1";
+        if (x > 1.0 && x < 2.0 && y >= -1.5 && y <= 1.5) return "안내 데스크";
+        if (x >= 2.0) return "복도 영역";
+        return "구역 파악 중";
+    }
+
+    // function updatePatientData() {
+    //     fetch('/api/patient/status')
+    //         .then(response => response.json())
+    //         .then(data => {
+    //             const x = data.location_x;
+    //             const y = data.location_y;
+    //             document.getElementById('patient-zone').innerText = getZoneName(x, y);
+    //             document.getElementById('raw-coord').innerText = `${x.toFixed(2)}, ${y.toFixed(2)}`;
+    //         })
+    //         .catch(error => console.error('Error fetching patient data:', error));
+    // }
+    // function updatePatientData() {
+    // fetch('/api/patient/status')
+    //     .then(response => response.json())
+    //     .then(res => {
+    //         if (res.success) {
+    //             const d = res.data;
+    //             const x = d.location_x;
+    //             const y = d.location_y;
+    //             const status = d.status; // 서버에서 보내주는 status 값
+
+    //             // 1. 위치 및 좌표 업데이트
+    //             document.getElementById('patient-zone').innerText = getZoneName(x, y);
+    //             document.getElementById('raw-coord').innerText = `${x.toFixed(2)}, ${y.toFixed(2)}`;
+
+    //             // 2. 위급상황 체크 로직 추가
+    //             if (status === "위급상황") {
+    //                 if (!isAlertActive) {
+    //                     isAlertActive = true; // 알림 활성화 상태로 변경
+                        
+    //                     // 경고음 재생 (선택 사항)
+    //                     // new Audio('/static/alert.mp3').play(); 
+
+    //                     alert(`[🚨 긴급 위급상황 발생]\n현재 위치: ${getZoneName(x, y)}\n의료진은 즉시 현장으로 출동하십시오!`);
+                        
+    //                     // 알림창을 닫으면 다시 상태를 초기화하고 싶다면 아래 주석 해제
+    //                     // isAlertActive = false; 
+    //                 }
+    //             } else {
+    //                 // 상황이 해제되면 다시 알림이 가능하도록 초기화
+    //                 isAlertActive = false;
+    //             }
+    //         }
+    //     })
+    //     .catch(error => console.error('Error fetching patient data:', error));
+    // }
+    // function updatePatientData() {
+    // // 디버깅을 위해 api/msg_test 주소를 사용하거나 
+    // // 기존 api/patient/status 주소를 사용해도 무방합니다.
+    // fetch('/api/patient/status') 
+    //     .then(response => response.json())
+    //     .then(res => {
+    //         if (res.success) {
+    //             // 서버에서 'data' 필드에 문자열로 "위급상황"이 오는지 확인
+    //             const status = res.data.status; 
+
+    //             if (status === "응급환자1234") {
+    //                 if (!isAlertActive) {
+    //                     isAlertActive = true; 
+                        
+    //                     // 즉시 알림창 띄우기
+    //                     alert("🚨 [긴급] 환자 위급상황이 발생했습니다! 즉시 확인하십시오.");
+    //                 }
+    //             } else {
+    //                 // "위급상황"이 아닌 다른 메시지가 오면 플래그 리셋
+    //                 isAlertActive = false;
+    //             }
+    //         }
+    //     })
+    //     .catch(error => console.error('데이터 수신 오류:', error));
+    // }
+
+    function updatePatientData() {
+        // 서버에 등록된 정확한 API 주소를 입력하세요 (예: /api/msg_test)
+        fetch('/api/msg_test') 
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    const message = result.data;
+
+                    // 1. 화면에 메시지를 표시하고 싶다면 id="topic-data"인 요소가 있어야 합니다.
+                    // 만약 없다면 이 아랫줄은 에러를 내므로 주석 처리하거나 요소를 추가해야 합니다.
+                    // document.getElementById('topic-data').innerText = message; 
+
+                    // 2. 응급환자 체크 로직
+                    if (message === "응급환자1234") {
+                        if (!isAlertActive) {
+                            isAlertActive = true; 
+                            alert("🚨 [긴급] 환자 위급상황이 발생했습니다! 즉시 확인하십시오.");
+                        }
+                    } else {
+                        // 메시지가 "응급환자1234"가 아니게 되면 다시 알림 가능 상태로 리셋
+                        isAlertActive = false;
+                    }
+                }
+            })
+            .catch(error => console.error('Error fetching topic:', error));
+    }
+
+    // 팝업 열기 함수
+    function openModal(msg) {
+        document.getElementById('popup-message').innerText = msg;
+        document.getElementById('emergency-modal').style.display = 'flex';
+        // 필요하다면 경고음 추가: new Audio('/static/alert.mp3').play();
+    }
+
+    // 팝업 닫기 함수
+    function closeModal() {
+        document.getElementById('emergency-modal').style.display = 'none';
+        // 확인 버튼을 눌러도 서버 데이터가 계속 응급이면 다시 뜰 수 있으므로
+        // 서버에서 리셋 로직이 돌아가는지 꼭 확인해야 합니다.
+    }
+
+    setInterval(updatePatientData, 500);
+    updatePatientData();
+</script>
+
+</body>
+</html>

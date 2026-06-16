@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>🏥 Hospital - 순찰 실행</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { margin: 0; font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; background-color: #f0f2f5; }
+
+        /* ── 사이드바 ── */
+        .sidebar { width: 220px; background-color: #0f3f8a; color: white; display: flex; flex-direction: column; padding-top: 20px; flex-shrink: 0; }
+        .sidebar h2 { text-align: center; margin-bottom: 30px; font-size: 1.1rem; }
+        .sidebar a { padding: 15px 25px; color: white; text-decoration: none; display: block; transition: 0.2s; font-size: 0.95rem; }
+        .sidebar a:hover { background-color: #1759bb; }
+        .sidebar a.active { background-color: #1759bb; font-weight: bold; border-left: 5px solid #fff; }
+
+        /* ── 메인 ── */
+        .main { flex: 1; padding: 35px; overflow-y: auto; }
+        .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+        .page-title { font-size: 1.6rem; font-weight: bold; color: #222; margin: 0; }
+        .logout { background: #1759bb; color: white; padding: 8px 18px; border-radius: 6px; text-decoration: none; font-size: 14px; }
+
+        /* ── 2컬럼 그리드 ── */
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+
+        /* ── 카드 ── */
+        .card { background: white; border-radius: 12px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+        .card-title { font-size: 0.82rem; font-weight: 700; color: #888; text-transform: uppercase;
+                      letter-spacing: 0.06em; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+        .badge { background: #1976d2; color: white; border-radius: 12px; padding: 2px 10px;
+                 font-size: 12px; font-weight: bold; }
+
+        /* ── detect 뱃지 ── */
+        .badge-detect    { background: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7;
+                           border-radius: 10px; padding: 1px 8px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+        .badge-no-detect { background: #f5f5f5; color: #9e9e9e; border: 1px solid #e0e0e0;
+                           border-radius: 10px; padding: 1px 8px; font-size: 11px; white-space: nowrap; }
+
+        /* ── 패트롤 리스트 ── */
+        ol { padding-left: 22px; margin: 0; }
+        li { padding: 10px 4px; display: flex; justify-content: space-between; align-items: center;
+             border-bottom: 1px solid #f0f0f0; font-size: 0.93rem; color: #333; gap: 8px; }
+        li:last-child { border-bottom: none; }
+        .li-name  { flex: 1; }
+        .empty-msg { color: #bbb; font-size: 0.9rem; padding: 12px 0; text-align: center; }
+
+        /* ── 위치 버튼 그리드 ── */
+        .loc-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+        .btn-loc { background: #e8f5e9; color: #2e7d32; border: none; border-radius: 7px;
+                   padding: 9px 10px; font-size: 0.85rem; font-weight: 600; cursor: pointer;
+                   transition: 0.15s; text-align: left; display: flex; flex-direction: column; gap: 3px; }
+        .btn-loc:hover { background: #c8e6c9; }
+        .btn-loc.no-detect { background: #f5f5f5; color: #555; }
+        .btn-loc.no-detect:hover { background: #e0e0e0; }
+        .btn-loc-label { font-size: 0.78rem; }
+
+        /* ── 삭제 버튼 ── */
+        .btn-del { background: #fce4ec; color: #c62828; border: none; border-radius: 5px;
+                   padding: 4px 10px; font-size: 0.8rem; font-weight: bold; cursor: pointer;
+                   transition: 0.15s; flex-shrink: 0; }
+        .btn-del:hover { background: #ef9a9a; }
+
+        /* ── 전체 초기화 버튼 ── */
+        .btn-clear { width: 100%; margin-top: 16px; background: #ffebee; color: #b71c1c;
+                     border: none; border-radius: 8px; padding: 11px; font-size: 0.9rem;
+                     font-weight: bold; cursor: pointer; transition: 0.15s; }
+        .btn-clear:hover { background: #ffcdd2; }
+
+        /* ── ROS2 상태 표시 ── */
+        .ros-bar { display: flex; align-items: center; gap: 8px; font-size: 0.82rem;
+                   color: #666; margin-top: 10px; padding-top: 10px; border-top: 1px solid #f0f0f0; }
+        .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+        .dot-on  { background: #4caf50; }
+        .dot-off { background: #bdbdbd; }
+
+        /* ── 갱신 타임스탬프 ── */
+        .last-update { font-size: 0.78rem; color: #aaa; margin-top: 14px; text-align: right; }
+
+        /* ── DB 계획 탭 ── */
+        .tab-bar { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
+        .tab-btn { background: #f1f5f9; color: #64748b; border: none; border-radius: 8px;
+                   padding: 7px 16px; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: 0.15s; }
+        .tab-btn:hover  { background: #e2e8f0; }
+        .tab-btn.active { background: #1565c0; color: #fff; }
+
+        /* ── DB 계획 행 ── */
+        .plan-row { display: flex; align-items: center; gap: 8px; padding: 8px 6px;
+                    border-bottom: 1px solid #f1f5f9; font-size: 0.88rem; }
+        .plan-row:last-child { border-bottom: none; }
+        .plan-row-num  { color: #1976d2; font-weight: 700; min-width: 22px; font-size: 0.82rem; }
+        .plan-row-name { flex: 1; font-weight: 600; color: #334155; }
+        .btn-add-one { background: #e3f2fd; color: #1565c0; border: none; border-radius: 5px;
+                       padding: 3px 10px; font-size: 0.78rem; font-weight: 700; cursor: pointer;
+                       transition: 0.15s; flex-shrink: 0; }
+        .btn-add-one:hover { background: #bbdefb; }
+
+        /* ── DB 계획 하단 실행 버튼 ── */
+        .btn-run-all { width: 100%; margin-top: 14px; background: #1565c0; color: #fff;
+                       border: none; border-radius: 8px; padding: 11px; font-size: 0.9rem;
+                       font-weight: 700; cursor: pointer; transition: 0.15s; }
+        .btn-run-all:hover { background: #0d47a1; }
+        .plan-empty { color: #bbb; font-size: 0.88rem; padding: 16px 0; text-align: center; }
+
+        /* ── 토스트 ── */
+        #toast { position: fixed; bottom: 28px; right: 28px; background: #1d4ed8; color: #fff;
+                 padding: 11px 20px; border-radius: 8px; font-size: 0.88rem;
+                 opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 9999; }
+        #toast.show { opacity: 1; }
+    </style>
+</head>
+<body>
+
+    <!-- ── 사이드바 ── -->
+    <nav class="sidebar">
+        <h2>🏥 Hospital</h2>
+        <a href="{{ url_for('main') }}">대시보드</a>
+        <a href="{{ url_for('patient') }}">환자</a>
+        <a href="{{ url_for('robot_status') }}">로봇 상태</a>
+        <a href="{{ url_for('camera') }}">실시간 카메라</a>
+        <a href="{{ url_for('robot_plan') }}">순찰 계획</a>
+        <a href="{{ url_for('patrol_control') }}" class="active">순찰 실행</a>
+    </nav>
+
+    <!-- ── 메인 콘텐츠 ── -->
+    <main class="main">
+        <div class="topbar">
+            <h1 class="page-title">🤖 순찰 실행</h1>
+            <a href="{{ url_for('logout') }}" class="logout">Logout</a>
+        </div>
+
+        <div class="grid">
+
+            <!-- ── 왼쪽: 현재 순찰 리스트 ── -->
+            <div>
+                <div class="card">
+                    <div class="card-title">
+                        현재 순찰 리스트
+                        <span class="badge" id="count">0</span>
+                    </div>
+                    <ol id="patrol-list">
+                        <li><span class="empty-msg">비어있음 — 대기 중</span></li>
+                    </ol>
+                    <button class="btn-clear" onclick="clearList()">🗑 전체 비우기</button>
+
+                    <!-- ROS2 연결 상태 -->
+                    <div class="ros-bar">
+                        <span class="dot" id="ros-dot"></span>
+                        <span id="ros-label">ROS2 상태 확인 중...</span>
+                    </div>
+                </div>
+                <div class="last-update" id="last-update"></div>
+            </div>
+
+            <!-- ── 오른쪽: 위치 추가 + DB 계획 ── -->
+            <div style="display:flex; flex-direction:column; gap:24px;">
+
+                <!-- 위치 추가 카드 -->
+                <div class="card">
+                    <div class="card-title">📍 위치 추가
+                        <span style="font-size:0.75rem; color:#aaa; font-weight:400; text-transform:none; letter-spacing:0;">
+                            🟢 감지 활성 &nbsp; ⚪ 이동만
+                        </span>
+                    </div>
+                    <div class="loc-grid">
+                        {% for loc in locations %}
+                        <button class="btn-loc {% if not loc.detect %}no-detect{% endif %}"
+                                onclick="addLoc('{{ loc.name }}')">
+                            <span>+ {{ loc.name }}</span>
+                            <span class="btn-loc-label">
+                                {% if loc.detect %}🟢 감지{% else %}⚪ 이동{% endif %}
+                            </span>
+                        </button>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- DB 계획 카드 -->
+                <div class="card">
+                    <div class="card-title">
+                        📋 순찰 계획 (DB)
+                        <span id="db-total-badge" style="background:#e3f2fd;color:#1565c0;border-radius:12px;
+                              padding:2px 10px;font-size:11px;font-weight:700;text-transform:none;letter-spacing:0;">
+                            0개
+                        </span>
+                        <button onclick="reloadDbPlans()" title="새로고침"
+                                style="margin-left:auto;background:none;border:none;cursor:pointer;
+                                       font-size:0.9rem;color:#aaa;padding:2px 6px;">🔄</button>
+                    </div>
+
+                    <!-- 로봇 탭 -->
+                    <div class="tab-bar" id="db-tab-bar">
+                        <button class="tab-btn active" data-robot="0" onclick="switchTab(0)">전체</button>
+                    </div>
+
+                    <!-- 계획 목록 -->
+                    <div id="db-plan-body">
+                        <div class="plan-empty">불러오는 중...</div>
+                    </div>
+
+                    <!-- 전체 실행 버튼 -->
+                    <button class="btn-run-all" id="btn-run-all" onclick="runCurrentTab()">
+                        ▶ 현재 탭 계획 순찰 실행
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <!-- ── 토스트 ── -->
+    <div id="toast"></div>
+
+    <script>
+        /* ── 상태 ─────────────────────────────────────────────────── */
+        let _dbPlans    = [];   // 전체 DB 계획 원본
+        let _activeTab  = 0;   // 현재 선택된 robot_num (0=전체)
+
+        /* ── 토스트 ──────────────────────────────────────────────── */
+        function showToast(msg, isError = false) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.style.background = isError ? '#c0392b' : '#1d4ed8';
+            t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 2200);
+        }
+
+        /* ── 순찰 리스트 렌더링 ──────────────────────────────────── */
+        function renderList(list) {
+            const ol  = document.getElementById('patrol-list');
+            const cnt = document.getElementById('count');
+            cnt.textContent = list.length;
+            ol.innerHTML = '';
+            if (list.length === 0) {
+                ol.innerHTML = '<li><span class="empty-msg">비어있음 — 대기 중</span></li>';
+                return;
+            }
+            list.forEach((item, idx) => {
+                const name        = item.name   ?? item;
+                const detect      = item.detect ?? false;
+                const x           = item.x      ?? 0;
+                const y           = item.y      ?? 0;
+                const yaw         = item.yaw    ?? 0;
+                const detectBadge = detect
+                    ? '<span class="badge-detect">🟢 감지</span>'
+                    : '<span class="badge-no-detect">⚪ 이동</span>';
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <span class="li-name">
+                        <b style="color:#1976d2;">${idx + 1}.</b> ${name}
+                        <span style="font-size:0.78rem;color:#aaa;margin-left:4px;">(${x}, ${y})</span>
+                    </span>
+                    ${detectBadge}
+                    <button class="btn-del" onclick="removeIdx(${idx})">삭제</button>`;
+                ol.appendChild(li);
+            });
+        }
+
+        /* ── ROS2 상태 ───────────────────────────────────────────── */
+        function updateRosStatus(connected) {
+            const dot   = document.getElementById('ros-dot');
+            const label = document.getElementById('ros-label');
+            dot.className     = connected ? 'dot dot-on' : 'dot dot-off';
+            label.textContent = connected
+                ? 'ROS2 연결됨 — /patrol_cmd 전송 활성'
+                : 'ROS2 없음 — 인메모리 모드';
+        }
+
+        /* ── 1초 폴링 ────────────────────────────────────────────── */
+        async function refresh() {
+            try {
+                const [pr, rr] = await Promise.all([
+                    fetch('/api/patrol/status'),
+                    fetch('/api/robot/status')
+                ]);
+                const pd = await pr.json();
+                const rd = await rr.json();
+                renderList(pd.list || []);
+                updateRosStatus(rd.data?.amcl_active ?? false);
+                document.getElementById('last-update').textContent =
+                    '마지막 갱신: ' + new Date().toLocaleTimeString();
+            } catch (e) { console.warn('[refresh]', e); }
+        }
+        setInterval(refresh, 1000);
+        refresh();
+
+        /* ── DB 계획 로드 ────────────────────────────────────────── */
+        async function reloadDbPlans() {
+            try {
+                const res  = await fetch('/api/plan/list');
+                const data = await res.json();
+                if (!data.success) throw new Error('조회 실패');
+                _dbPlans = data.list;
+                buildTabs();
+                renderDbPlans(_activeTab);
+                // 총 개수 뱃지
+                document.getElementById('db-total-badge').textContent = `${_dbPlans.length}개`;
+            } catch (e) {
+                document.getElementById('db-plan-body').innerHTML =
+                    `<div class="plan-empty" style="color:#e53935;">불러오기 실패: ${e.message}</div>`;
+            }
+        }
+
+        /* ── 탭 생성 (robot_num 기준) ────────────────────────────── */
+        function buildTabs() {
+            const robots = [...new Set(_dbPlans.map(r => r.robot_num))].sort();
+            const bar    = document.getElementById('db-tab-bar');
+            bar.innerHTML = '';
+
+            // 전체 탭
+            const allBtn = document.createElement('button');
+            allBtn.className  = `tab-btn${_activeTab === 0 ? ' active' : ''}`;
+            allBtn.dataset.robot = 0;
+            allBtn.textContent   = `전체 (${_dbPlans.length})`;
+            allBtn.onclick = () => switchTab(0);
+            bar.appendChild(allBtn);
+
+            // 로봇별 탭
+            robots.forEach(rn => {
+                const cnt = _dbPlans.filter(r => r.robot_num === rn).length;
+                const btn = document.createElement('button');
+                btn.className    = `tab-btn${_activeTab === rn ? ' active' : ''}`;
+                btn.dataset.robot = rn;
+                btn.textContent   = `로봇 ${rn} (${cnt})`;
+                btn.onclick = () => switchTab(rn);
+                bar.appendChild(btn);
+            });
+        }
+
+        /* ── 탭 전환 ─────────────────────────────────────────────── */
+        function switchTab(robotNum) {
+            _activeTab = robotNum;
+            document.querySelectorAll('.tab-btn').forEach(b => {
+                b.classList.toggle('active', parseInt(b.dataset.robot) === robotNum);
+            });
+            renderDbPlans(robotNum);
+        }
+
+        /* ── DB 계획 목록 렌더링 ─────────────────────────────────── */
+        function renderDbPlans(robotNum) {
+            const list = robotNum === 0
+                ? _dbPlans
+                : _dbPlans.filter(r => r.robot_num === robotNum);
+
+            const body = document.getElementById('db-plan-body');
+            const btn  = document.getElementById('btn-run-all');
+
+            if (list.length === 0) {
+                body.innerHTML = '<div class="plan-empty">등록된 계획이 없습니다.</div>';
+                btn.disabled   = true;
+                btn.style.opacity = '0.4';
+                return;
+            }
+            btn.disabled      = false;
+            btn.style.opacity = '1';
+
+            body.innerHTML = list.map((r, i) => {
+                const badge = r.fulfill
+                    ? '<span class="badge-detect">🟢 감지</span>'
+                    : '<span class="badge-no-detect">⚪ 이동</span>';
+                return `<div class="plan-row">
+                    <span class="plan-row-num">${i + 1}.</span>
+                    <span class="plan-row-name">${r.room_name}</span>
+                    <span style="font-size:0.78rem;color:#aaa;margin-right:4px;">로봇${r.robot_num}</span>
+                    ${badge}
+                    <button class="btn-add-one" onclick="addOneToPatrol('${r.room_name}')">+ 추가</button>
+                </div>`;
+            }).join('');
+        }
+
+        /* ── 단일 항목 추가 ──────────────────────────────────────── */
+        async function addOneToPatrol(name) {
+            try {
+                const res = await fetch('/api/patrol/add', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name })
+                });
+                const d = await res.json();
+                if (!d.success) throw new Error(d.message || '추가 실패');
+                showToast(`[${name}] → 순찰 리스트에 추가됨`);
+                refresh();
+            } catch (e) { showToast(e.message, true); }
+        }
+
+        /* ── 현재 탭 전체 실행 ───────────────────────────────────── */
+        async function runCurrentTab() {
+            const robotNum = _activeTab;
+            const label    = robotNum === 0 ? '전체 로봇' : `로봇 ${robotNum}`;
+            const list     = robotNum === 0 ? _dbPlans : _dbPlans.filter(r => r.robot_num === robotNum);
+            if (list.length === 0) { showToast('실행할 계획이 없습니다.', true); return; }
+            if (!confirm(`${label}의 계획 ${list.length}개를 순찰 리스트로 적재하고 실행하시겠습니까?`)) return;
+            try {
+                const res  = await fetch('/api/plan/run', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ robot_num: robotNum })
+                });
+                const data = await res.json();
+                if (!data.success) throw new Error(data.message || '실행 실패');
+                showToast(`✅ ${data.count}개 계획 순찰 실행 시작`);
+                refresh();
+            } catch (e) { showToast(e.message, true); }
+        }
+
+        /* ── 위치 추가 ───────────────────────────────────────────── */
+        async function addLoc(name) {
+            const res = await fetch('/api/patrol/add', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name })
+            });
+            if (!res.ok) { showToast('추가 실패', true); return; }
+            showToast(`[${name}] 추가됨`);
+            refresh();
+        }
+
+        /* ── 인덱스로 삭제 ───────────────────────────────────────── */
+        async function removeIdx(idx) {
+            const res = await fetch('/api/patrol/remove', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ index: idx })
+            });
+            if (!res.ok) { showToast('삭제 실패', true); return; }
+            refresh();
+        }
+
+        /* ── 전체 초기화 ─────────────────────────────────────────── */
+        async function clearList() {
+            if (!confirm('순찰 리스트를 전체 초기화하시겠습니까?')) return;
+            const res = await fetch('/api/patrol/clear', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: '{}'
+            });
+            if (!res.ok) { showToast('초기화 실패', true); return; }
+            showToast('순찰 리스트가 초기화되었습니다.');
+            refresh();
+        }
+
+        /* ── 페이지 로드 시 DB 계획 자동 로드 ───────────────────── */
+        reloadDbPlans();
+    </script>
+    <script src="/static/emergency_popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>main</title>
+    <style>
+        /* Flexbox styling to center content */
+        body {
+            display: flex;
+            justify-content: center; /* Center horizontally */
+            align-items: center; /* Center vertically */
+            height: 100vh; /* Full viewport height */
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: #f3f4f6; /* Light background color */
+        }
+
+        /* Centered container styling */
+        .main-container {
+            width: 100%;
+            max-width: 400px; /* Set max width */
+            padding: 20px;
+            border-radius: 8px;
+            background-color: white;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Add a shadow */
+            text-align: center;
+        }
+
+        /* Styling for the welcome message */
+        .main-container h1 {
+            font-size: 24px;
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .main-container p {
+            font-size: 18px;
+            color: #666;
+            margin-bottom: 20px;
+        }
+
+        /* Styling for the logout link */
+        .logout-link {
+            display: inline-block;
+            padding: 10px 20px;
+            color: white;
+            background-color: #1759bb;
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+
+        .logout-link:hover {
+            background-color: #1759bb; /* Hover effect */
+        }
+    </style>
+</head>
+<body>
+    <!-- Centered welcome container -->
+    <div class="r_index-container">
+        <h1>Dffsd</h1>
+        <a href="{{ url_for('logout') }}" class="logout-link">Logout</a>
+    </div>
+</body>
+</html>

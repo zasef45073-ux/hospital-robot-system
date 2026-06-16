@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>응급 환자</title>
+
+<style>
+/* =============================================================================
+   [CSS] 페이지 전체 레이아웃 설정
+   ============================================================================= */
+
+body {
+    margin: 0;               /* 브라우저 기본 여백 제거 */
+    font-family: Arial;      /* 기본 글꼴 설정 */
+    display: flex;           /* 사이드바와 메인을 가로로 배치 */
+    height: 100vh;           /* 전체 화면 높이를 사용 */
+}
+
+/* [사이드바]
+   - 왼쪽 메뉴 영역으로 짙은 파란색 배경을 가짐
+*/
+.sidebar {
+    width: 220px;
+    background-color: #0f3f8a;
+    color: white;
+    display: flex;
+    flex-direction: column;  /* 메뉴 항목을 세로로 나열 */
+    padding-top: 20px;
+}
+
+/* 사이드바 메뉴 버튼 (링크) */
+.sidebar a {
+    padding: 15px;
+    color: white;
+    text-decoration: none;   /* 밑줄 제거 */
+    display: block;          /* 클릭 영역을 한 줄 전체로 확장 */
+}
+
+/* 메뉴에 마우스를 올렸을 때 효과 */
+.sidebar a:hover {
+    background-color: #1759bb;
+}
+
+/* [메인 영역]
+   - 실제 콘텐츠가 들어가는 오른쪽 공간
+*/
+.main {
+    flex: 1;                 /* 사이드바를 제외한 나머지 모든 공간 차지 */
+    padding: 20px;
+    background-color: #f3f4f6; /* 연한 회색 배경 */
+}
+
+/* [상단바]
+   - 인사말과 로그아웃 버튼이 위치하는 상단 영역
+*/
+.topbar {
+    display: flex;
+    justify-content: space-between; /* 양 끝으로 요소 배치 */
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+/* 로그아웃 버튼 스타일 */
+.logout {
+    background: #1759bb;
+    color: white;
+    padding: 8px 12px;
+    border-radius: 4px;
+    text-decoration: none;
+}
+
+.logout:hover {
+    background: #0f3f8a;
+}
+
+/* [공통 UI 요소]
+   - 카드 형태의 콘텐츠 상자 및 버튼 스타일
+*/
+.card {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1); /* 입체감을 위한 그림자 */
+}
+
+.btn {
+    background-color: #2d89ef;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    cursor: pointer;
+}
+
+.btn:hover {
+    background-color: #1b5fcc;
+}
+</style>
+</head>
+
+<body>
+
+<div class="sidebar">
+    <h2 style="text-align:center;">🏥 Hospital</h2>
+    <a href="{{ url_for('main') }}">대시보드</a>
+    <a href="{{ url_for('patient') }}">환자</a>
+    <a href="{{ url_for('robot_status') }}">로봇 상태</a>
+    <a href="{{ url_for('camera') }}">실시간 카메라</a>
+    <a href="{{ url_for('robot_plan') }}">순찰 계획</a>
+        <a href="{{ url_for('patrol_control') }}">순찰 실행</a>
+</div>
+
+<div class="main">
+
+    <div class="topbar">
+        <h3>Welcome, {{ username }} 👋</h3>
+        <a href="{{ url_for('logout') }}" class="logout">Logout</a>
+    </div>
+    
+    <div class="card">
+        </div>
+
+</div>
+
+    <script src="/static/emergency_popup.js"></script>
+</body>
+</html>

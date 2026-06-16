@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Camera</title>
+<style>
+    /* =============================================================================
+       [CSS] 레이아웃 및 사이드바 스타일
+       ============================================================================= */
+    
+    /* 화면 전체: 여백 제거 및 사이드바-메인을 가로로 배치 */
+    body { margin: 0; font-family: Arial, sans-serif; display: flex; height: 100vh; background-color: #f3f4f6; }
+
+    /* 왼쪽 사이드바: 짙은 파란색 테마의 메뉴 영역 */
+    .sidebar {
+        width: 220px;
+        background-color: #0f3f8a;
+        color: white;
+        display: flex;
+        flex-direction: column;
+        padding-top: 20px;
+    }
+    .sidebar h2 { text-align: center; }
+    .sidebar a {
+        padding: 15px;
+        color: white;
+        text-decoration: none;
+        display: block;
+    }
+    .sidebar a:hover { background-color: #1759bb; }
+
+    /* 메인 콘텐츠 영역: 패딩 30px 적용 및 내용이 길어지면 개별 스크롤 생성 */
+    .main { flex: 1; padding: 30px; overflow-y: auto; }
+
+    /* 상단바: 제목과 로그아웃 버튼 배치 및 구분선 설정 */
+    .topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid #e0e4e9;
+    }
+    .logout {
+        background: #1759bb;
+        color: white;
+        padding: 8px 18px;
+        border-radius: 6px;
+        text-decoration: none;
+        font-size: 14px;
+        font-weight: bold;
+    }
+
+    /* =============================================================================
+       [CSS] 카메라 그리드 및 카드 디자인
+       ============================================================================= */
+
+    /* 카메라 카드들을 2열(1fr 1fr)로 배치하는 그리드 시스템 */
+    .cam-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+    }
+
+    /* 카메라 각각을 담는 카드: 흰색 배경과 입체감을 위한 그림자 적용 */
+    .cam-card {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    /* 카드 헤더: 카메라 이름과 상태 배지를 양 끝에 배치 */
+    .cam-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .cam-title { font-size: 0.85rem; font-weight: bold; color: #444; }
+
+    /* 실제 영상이 출력되는 뷰어 영역: 검은 배경 및 요소 정중앙 정렬 */
+    .cam-view {
+        height: 360px;
+        background: #111;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        position: relative;
+    }
+
+    /* 카메라 영상 이미지: 비율을 유지하며 꽉 채우기 (연결 전엔 숨김) */
+    .cam-view img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        display: none;
+    }
+
+    /* 로딩 중 표시 요소: 뷰어 정중앙에 띄움 */
+    .cam-loading {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+        color: #aaa;
+        position: absolute;
+    }
+    
+    /* 신호 없음(No Signal) 표시 요소: 평소엔 숨김 처리 */
+    .cam-no-signal {
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        color: #555;
+        position: absolute;
+    }
+    .cam-no-signal .icon  { font-size: 2.5rem; opacity: 0.4; }
+    .cam-no-signal .label { font-size: 0.85rem; color: #999; }
+
+    /* 회전하는 로딩 애니메이션(스피너) */
+    .spinner {
+        width: 36px; height: 36px;
+        border: 4px solid #333;
+        border-top-color: #1759bb;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* 상태 표시 배지: 상태에 따라 배경색과 글자색이 다르게 설정됨 */
+    .cam-badge { font-size: 0.72rem; padding: 3px 10px; border-radius: 20px; font-weight: bold; }
+    .cam-badge.checking  { background: #fff3cd; color: #856404; } /* 노란색: 확인 중 */
+    .cam-badge.connected { background: #d4edda; color: #155724; } /* 초록색: 연결됨 */
+    .cam-badge.error     { background: #f8d7da; color: #721c24; } /* 빨간색: 에러 */
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+    <h2>🏥 Hospital</h2>
+    <a href="{{ url_for('main') }}">대시보드</a>
+    <a href="{{ url_for('patient') }}">환자</a>
+    <a href="{{ url_for('robot_status') }}">로봇 상태</a>
+    <a href="{{ url_for('camera') }}">실시간 카메라</a>
+    <a href="{{ url_for('robot_plan') }}">순찰 계획</a>
+        <a href="{{ url_for('patrol_control') }}">순찰 실행</a>
+</div>
+
+<div class="main">
+    <div class="topbar">
+        <h3>실시간 카메라</h3>
+        <a href="{{ url_for('logout') }}" class="logout">Logout</a>
+    </div>
+
+    <div class="cam-grid">
+
+        <div class="cam-card">
+            <div class="cam-header">
+                <div class="cam-title">📡 AMR 카메라 (OAK-D)</div>
+                <span id="amr-badge" class="cam-badge checking">⏳ 확인 중</span>
+            </div>
+            <div class="cam-view">
+                <div class="cam-loading" id="amr-loading">
+                    <div class="spinner"></div>
+                    <div style="font-size:0.8rem;">연결 시도 중...</div>
+                </div>
+                <img id="amr-img"
+                     src="/stream/robot1/camera"
+                     alt="AMR 카메라"
+                     onload="onStreamLoad('amr')"
+                     onerror="onStreamError('amr')">
+                <div class="cam-no-signal" id="amr-no-signal">
+                    <div class="icon">📵</div>
+                    <div class="label">토픽 수신 불가</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="cam-card">
+            <div class="cam-header">
+                <div class="cam-title">🎥 USB 웹캠</div>
+                <span id="usb-badge" class="cam-badge checking">⏳ 확인 중</span>
+            </div>
+            <div class="cam-view">
+                <div class="cam-loading" id="usb-loading">
+                    <div class="spinner"></div>
+                    <div style="font-size:0.8rem;">연결 시도 중...</div>
+                </div>
+                <img id="usb-img"
+                     src="/stream/usb_camera"
+                     alt="USB 웹캠"
+                     onload="onStreamLoad('usb')"
+                     onerror="onStreamError('usb')">
+                <div class="cam-no-signal" id="usb-no-signal">
+                    <div class="icon">📵</div>
+                    <div class="label">카메라 연결 없음</div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    /* 카메라 연결에 성공(이미지 로드 완료)했을 때 호출되는 함수 */
+    function onStreamLoad(id) {
+        document.getElementById(id + '-loading').style.display    = 'none';   // 로딩 숨김
+        document.getElementById(id + '-no-signal').style.display  = 'none';   // 에러 숨김
+        document.getElementById(id + '-img').style.display        = 'block';  // 이미지 보임
+        document.getElementById(id + '-badge').textContent        = '🟢 연결됨'; // 배지 텍스트 변경
+        document.getElementById(id + '-badge').className          = 'cam-badge connected'; // 배지 스타일 변경
+    }
+
+    /* 카메라 연결에 실패(이미지 주소 오류 등)했을 때 호출되는 함수 */
+    function onStreamError(id) {
+        document.getElementById(id + '-loading').style.display    = 'none';   // 로딩 숨김
+        document.getElementById(id + '-img').style.display        = 'none';   // 이미지 숨김
+        document.getElementById(id + '-no-signal').style.display  = 'flex';   // 에러 보임
+        document.getElementById(id + '-badge').textContent        = '🔴 연결 실패'; // 배지 텍스트 변경
+        document.getElementById(id + '-badge').className          = 'cam-badge error'; // 배지 스타일 변경
+    }
+</script>
+    <script src="/static/emergency_popup.js"></script>
+</body>
+</html>

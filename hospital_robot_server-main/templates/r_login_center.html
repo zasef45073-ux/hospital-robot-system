@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hospital Robot Control - Login</title>
+    <style>
+        /* =============================================================================
+        [CSS] 웹 페이지 레이아웃 및 디자인 설정
+        =============================================================================
+        이 섹션은 화면의 구성 요소를 시각적으로 배치하고 꾸미는 역할을 합니다.
+        */
+
+        /* 1. 페이지 전체 레이아웃 (Flexbox 사용) */
+        body {
+            display: flex;           /* 플렉스박스 레이아웃 활성화 */
+            justify-content: center;  /* 가로축 기준 중앙 정렬 */
+            align-items: center;      /* 세로축 기준 중앙 정렬 */
+            height: 100vh;            /* 브라우저 화면의 전체 높이를 사용 */
+            margin: 0;                /* 브라우저 기본 여백 제거 */
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; /* 폰트 설정 */
+            background-color: #f3f4f6; /* 눈이 편안한 연회색 배경 */
+        }
+
+        /* 2. 로그인 폼을 감싸는 카드 컨테이너 */
+        .login-container {
+            width: 100%;
+            max-width: 400px;         /* 화면이 커져도 400px 이상 늘어나지 않음 */
+            padding: 30px;
+            border-radius: 12px;      /* 모서리를 부드럽게 곡선 처리 */
+            background-color: white;  /* 깔끔한 흰색 배경 */
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1); /* 입체감을 위한 그림자 */
+            text-align: center;       /* 내부 텍스트 정렬 */
+        }
+
+        /* 3. 제목 및 텍스트 스타일 */
+        .login-container h1 {
+            margin: 0 0 10px 0;
+            font-size: 28px;
+            color: #1759bb;           /* 신뢰감을 주는 병원 테마 블루 색상 */
+        }
+
+        .login-container h4 {
+            margin-bottom: 25px;
+            color: #666;
+            font-weight: 400;
+        }
+
+        /* 4. 입력 폼 요소 스타일 */
+        label {
+            display: block;           /* 라벨을 한 줄 전체에 배치 */
+            text-align: left;         /* 글자는 왼쪽 정렬 */
+            margin-bottom: 8px;
+            color: #333;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        input[type="text"], 
+        input[type="password"] {
+            width: 100%;              /* 부모 너비에 가득 차게 설정 */
+            padding: 12px;
+            margin-bottom: 20px;
+            border: 1px solid #ccc;   /* 기본 테두리 */
+            border-radius: 6px;       /* 입력창 모서리 곡선 */
+            box-sizing: border-box;   /* 패딩 값이 너비에 영향을 주지 않도록 설정 */
+            font-size: 15px;
+        }
+
+        /* 5. 로그인 제출 버튼 스타일 */
+        button[type="submit"] {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            background-color: #1759bb; /* 기본 배경색 */
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;          /* 마우스 오버 시 클릭 손가락 아이콘 */
+            transition: background 0.3s; /* 색상 변경 시 부드럽게 전환 */
+        }
+
+        button[type="submit"]:hover {
+            background-color: #114696; /* 마우스 올렸을 때 조금 더 진한 색상 */
+        }
+
+        /* 6. 경고 메시지(Flash Message) 스타일 */
+        .error-list {
+            list-style: none;         /* 리스트 점 제거 */
+            padding: 10px;
+            margin-bottom: 20px;
+            background-color: #fce4e4; /* 연한 빨간색 배경 */
+            border-radius: 4px;
+            color: #cc0000;           /* 에러 강조용 진한 빨간색 */
+            font-size: 14px;
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        
+        <h1>Hospital</h1>
+        <h4>Robot Control System</h4>
+        
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <ul class="error-list">
+                    {% for category, message in messages %}
+                        <li class="{{ category }}">{{ message }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST" action="{{ url_for('login') }}">
+            
+            <label for="UserID">ID:</label>
+            <input type="text" name="username" placeholder="Enter ID" required>
+            
+            <label for="password">Password:</label>
+            <input type="password" name="password" placeholder="Enter Password" required>
+            
+            <button type="submit">Login to Dashboard</button>
+
+        </form>
+    </div>
+</body>
+</html>
